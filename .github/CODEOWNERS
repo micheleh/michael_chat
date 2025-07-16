@@ -1,0 +1,15 @@
+# Global code owner - all files require approval from micheleh
+* @micheleh
+
+# Frontend specific
+/frontend/ @micheleh
+
+# Backend specific
+/backend/ @micheleh
+
+# Configuration files
+*.json @micheleh
+*.md @micheleh
+*.txt @micheleh
+*.yml @micheleh
+*.yaml @micheleh
