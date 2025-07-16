@@ -1,20 +1,163 @@
-import React, { useState, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
+import { Configuration, ConfigurationInput } from '../types/types';
 
 interface ConfigurationProps {
-  onConfigSave: (apiUrl: string, apiKey: string) => void;
-  currentApiUrl: string;
-  currentApiKey: string;
+  onConfigurationChange: (config: Configuration | null) => void;
 }
 
-const Configuration: React.FC<ConfigurationProps> = ({ onConfigSave, currentApiUrl, currentApiKey }) => {
-  const [apiUrl, setApiUrl] = useState(currentApiUrl);
-  const [apiKey, setApiKey] = useState(currentApiKey);
+const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationChange }) => {
+  const [configurations, setConfigurations] = useState<Configuration[]>([]);
+  const [activeConfig, setActiveConfig] = useState<Configuration | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingConfig, setEditingConfig] = useState<Configuration | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Form state
+  const [formData, setFormData] = useState<ConfigurationInput>({
+    name: '',
+    apiUrl: '',
+    apiKey: ''
+  });
   const [showApiKey, setShowApiKey] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  // Load configurations on component mount
+  useEffect(() => {
+    loadConfigurations();
+  }, []);
+
+  const loadConfigurations = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/configurations');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setConfigurations(data);
+        
+        // Find and set active configuration
+        const active = data.find((config: Configuration) => config.isActive);
+        if (active) {
+          setActiveConfig(active);
+          onConfigurationChange(active);
+        }
+      } else {
+        throw new Error(data.error || 'Failed to load configurations');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load configurations');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (apiUrl.trim() && apiKey.trim()) {
-      onConfigSave(apiUrl.trim(), apiKey.trim());
+    
+    if (!formData.name.trim() || !formData.apiUrl.trim() || !formData.apiKey.trim()) {
+      setError('All fields are required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const url = isEditing ? `/api/configurations/${editingConfig?.id}` : '/api/configurations';
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        await loadConfigurations();
+        resetForm();
+        setShowForm(false);
+        setIsEditing(false);
+        setEditingConfig(null);
+        
+        // If this is the first configuration, it becomes active automatically
+        if (!isEditing && configurations.length === 0) {
+          setActiveConfig(data);
+          onConfigurationChange(data);
+        }
+      } else {
+        throw new Error(data.error || 'Failed to save configuration');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save configuration');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEdit = (config: Configuration) => {
+    setIsEditing(true);
+    setEditingConfig(config);
+    setFormData({
+      name: config.name,
+      apiUrl: config.apiUrl,
+      apiKey: config.apiKey
+    });
+    setShowForm(true);
+  };
+
+  const handleDelete = async (configId: string) => {
+    if (!window.confirm('Are you sure you want to delete this configuration?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`/api/configurations/${configId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        await loadConfigurations();
+      } else {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete configuration');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete configuration');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleActivate = async (configId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`/api/configurations/${configId}/activate`, {
+        method: 'POST'
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setActiveConfig(data);
+        onConfigurationChange(data);
+        await loadConfigurations();
+      } else {
+        throw new Error(data.error || 'Failed to activate configuration');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to activate configuration');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -33,12 +176,7 @@ const Configuration: React.FC<ConfigurationProps> = ({ onConfigSave, currentApiU
     }
   };
 
-  const handleTestExternalAPI = async () => {
-    if (!apiUrl.trim()) {
-      alert('Please enter an API URL first');
-      return;
-    }
-
+  const handleTestExternalAPI = async (config: Configuration) => {
     try {
       const response = await fetch('/api/test-external', {
         method: 'POST',
@@ -46,15 +184,15 @@ const Configuration: React.FC<ConfigurationProps> = ({ onConfigSave, currentApiU
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          api_url: apiUrl.trim(),
-          api_key: apiKey.trim()
+          api_url: config.apiUrl,
+          api_key: config.apiKey
         })
       });
 
       const data = await response.json();
       
       if (response.ok) {
-        let message = `External API Test Results:\n\n`;
+        let message = `External API Test Results for "${config.name}":\n\n`;
         message += `Health Check: ${data.health_status === 200 ? '✅ Success' : '❌ Failed'} (${data.health_status})\n`;
         message += `Health Response: ${data.health_response}\n\n`;
         
@@ -74,84 +212,191 @@ const Configuration: React.FC<ConfigurationProps> = ({ onConfigSave, currentApiU
     }
   };
 
-  const resetToDefaults = () => {
-    setApiUrl('https://api.openai.com/v1/chat/completions');
-    setApiKey('');
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      apiUrl: '',
+      apiKey: ''
+    });
+    setShowApiKey(false);
   };
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+    setIsEditing(false);
+    setEditingConfig(null);
+    setError(null);
+  };
+
+  if (loading && configurations.length === 0) {
+    return <div className="configuration-container">Loading configurations...</div>;
+  }
 
   return (
     <div className="configuration-container">
-      <h2>Configuration</h2>
-      
-      <form onSubmit={handleSubmit} className="config-form">
-        <div className="form-group">
-          <label htmlFor="apiUrl">API Endpoint URL:</label>
-          <input
-            type="url"
-            id="apiUrl"
-            value={apiUrl}
-            onChange={(e) => setApiUrl(e.target.value)}
-            placeholder="https://api.openai.com/v1/chat/completions"
-            required
-            className="config-input"
-          />
-          <small className="form-help">
-            Enter the complete API endpoint URL for your chat service
-          </small>
-        </div>
+      <div className="config-header">
+        <h2>API Configurations</h2>
+        <button 
+          onClick={() => setShowForm(true)} 
+          className="add-config-button"
+          disabled={loading}
+        >
+          + Add Configuration
+        </button>
+      </div>
 
-        <div className="form-group">
-          <label htmlFor="apiKey">API Key:</label>
-          <div className="api-key-container">
-            <input
-              type={showApiKey ? 'text' : 'password'}
-              id="apiKey"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your API key"
-              required
-              className="config-input"
-            />
-            <button
-              type="button"
-              onClick={() => setShowApiKey(!showApiKey)}
-              className="toggle-visibility"
-            >
-              {showApiKey ? 'Hide' : 'Show'}
-            </button>
+      {error && (
+        <div className="error-message">
+          {error}
+          <button onClick={() => setError(null)} className="dismiss-error">×</button>
+        </div>
+      )}
+
+      {/* Configuration List */}
+      <div className="config-list">
+        {configurations.length === 0 ? (
+          <div className="no-configs">
+            <p>No configurations found. Create your first configuration to get started.</p>
           </div>
-          <small className="form-help">
-            Your API key will be stored locally in your browser
-          </small>
-        </div>
+        ) : (
+          configurations.map((config) => (
+            <div key={config.id} className={`config-item ${config.isActive ? 'active' : ''}`}>
+              <div className="config-info">
+                <h3>{config.name}</h3>
+                <p className="config-url">{config.apiUrl}</p>
+                <p className="config-meta">
+                  Created: {new Date(config.createdAt).toLocaleDateString()}
+                  {config.updatedAt !== config.createdAt && (
+                    <span> • Updated: {new Date(config.updatedAt).toLocaleDateString()}</span>
+                  )}
+                </p>
+              </div>
+              <div className="config-actions">
+                {config.isActive ? (
+                  <span className="active-badge">Active</span>
+                ) : (
+                  <button 
+                    onClick={() => handleActivate(config.id)}
+                    className="activate-button"
+                    disabled={loading}
+                  >
+                    Activate
+                  </button>
+                )}
+                <button 
+                  onClick={() => handleEdit(config)}
+                  className="edit-button"
+                  disabled={loading}
+                >
+                  Edit
+                </button>
+                <button 
+                  onClick={() => handleTestExternalAPI(config)}
+                  className="test-button"
+                  disabled={loading}
+                >
+                  Test
+                </button>
+                <button 
+                  onClick={() => handleDelete(config.id)}
+                  className="delete-button"
+                  disabled={loading || configurations.length === 1}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
 
-        <div className="form-actions">
-          <button type="submit" className="save-button">
-            Save Configuration
-          </button>
-          <button type="button" onClick={resetToDefaults} className="reset-button">
-            Reset to Defaults
-          </button>
-          <button type="button" onClick={handleTestConnection} className="test-button">
-            Test Backend Connection
-          </button>
-          <button type="button" onClick={handleTestExternalAPI} className="test-button">
-            Test External API
-          </button>
+      {/* Add/Edit Form */}
+      {showForm && (
+        <div className="config-form-overlay">
+          <div className="config-form-modal">
+            <h3>{isEditing ? 'Edit Configuration' : 'Add New Configuration'}</h3>
+            
+            <form onSubmit={handleSubmit} className="config-form">
+              <div className="form-group">
+                <label htmlFor="name">Configuration Name:</label>
+                <input
+                  type="text"
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder="e.g., OpenAI GPT-4, Local LLM, etc."
+                  required
+                  className="config-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="apiUrl">API Endpoint URL:</label>
+                <input
+                  type="url"
+                  id="apiUrl"
+                  value={formData.apiUrl}
+                  onChange={(e) => setFormData({...formData, apiUrl: e.target.value})}
+                  placeholder="https://api.openai.com/v1/chat/completions"
+                  required
+                  className="config-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="apiKey">API Key:</label>
+                <div className="api-key-container">
+                  <input
+                    type={showApiKey ? 'text' : 'password'}
+                    id="apiKey"
+                    value={formData.apiKey}
+                    onChange={(e) => setFormData({...formData, apiKey: e.target.value})}
+                    placeholder="Enter your API key"
+                    required
+                    className="config-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="toggle-visibility"
+                  >
+                    {showApiKey ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button type="submit" className="save-button" disabled={loading}>
+                  {loading ? 'Saving...' : (isEditing ? 'Update Configuration' : 'Save Configuration')}
+                </button>
+                <button type="button" onClick={handleCancel} className="cancel-button">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </form>
+      )}
+
+      {/* Utility Actions */}
+      <div className="config-utilities">
+        <button onClick={handleTestConnection} className="test-button">
+          Test Backend Connection
+        </button>
+      </div>
 
       <div className="config-info">
         <h3>Information</h3>
         <ul>
-          <li>Configuration is saved locally in your browser</li>
+          <li>Configurations are stored on the server (in-memory for now)</li>
           <li>API calls are proxied through the Python backend</li>
-          <li>Your API key is never stored on the server</li>
-          <li>Default endpoint works with OpenAI API</li>
+          <li>Only one configuration can be active at a time</li>
+          <li>The active configuration is used for all chat requests</li>
         </ul>
       </div>
     </div>
   );
 };
 
-export default Configuration;
+export default ConfigurationComponent;
