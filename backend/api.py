@@ -216,10 +216,18 @@ def get_configurations():
 @api_blueprint.route('/api/configurations', methods=['POST'])
 def create_configuration():
     data = request.get_json()
+    
+    # Validate required fields
+    if not data.get('name'):
+        return jsonify({'error': 'Missing required field: name'}), 400
+    if not data.get('apiUrl'):
+        return jsonify({'error': 'Missing required field: apiUrl'}), 400
+    
     name = data['name']
     api_url = data['apiUrl']
     api_key = data.get('apiKey', '')
     model = data.get('model', '')
+    
     try:
         new_config = config_manager.create_configuration(name, api_url, api_key, model)
         return jsonify(new_config), 201

@@ -1,3 +1,6 @@
 # Ignore configuration files
 configurations.json
 
+# Ignore test files with API keys
+tests/test_maverick.py
+
