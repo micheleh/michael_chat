@@ -59,7 +59,8 @@ def chat_proxy():
         # API format for this specific endpoint
         payload = {
             'messages': messages,
-            'max_tokens': 1000
+            'max_tokens': 1000,
+            'stream': False  # Disable streaming for more reliable responses
         }
         
         # Only include model in payload if it's specified in the configuration
@@ -134,26 +135,56 @@ def test_external_api():
 
 def handle_streaming_response(response):
     """Handle streaming response"""
+    print(f"🔄 Handling streaming response...")
+    
     full_content = ""
     error_content = ""
     line_count = 0
     
     for line in response.iter_lines(decode_unicode=True):
         line_count += 1
+        print(f"📄 Line {line_count}: {line[:200]}..." if line and len(line) > 200 else f"📄 Line {line_count}: {line or 'None'}")
+        
         if line and line.startswith('data: '):
             data_part = line[6:]  # Remove 'data: ' prefix
             if data_part.strip() == '[DONE]':
                 break
             try:
                 chunk_data = json.loads(data_part)
+                print(f"📊 Parsed chunk: {chunk_data}")
+                
+                # Check for errors in the chunk
+                if 'error' in chunk_data and chunk_data['error'] is not None:
+                    error_content += str(chunk_data['error'])
+                    print(f"❌ Error in chunk: {chunk_data['error']}")
+                
+                # Check for choices and content
                 if 'choices' in chunk_data and len(chunk_data['choices']) > 0:
                     delta = chunk_data['choices'][0].get('delta', {})
                     if 'content' in delta and delta['content'] is not None:
                         full_content += delta['content']
-            except json.JSONDecodeError:
-                error_content += data_part
+                        print(f"✅ Added content: {delta['content']}")
+                        
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON decode error: {e}")
+                print(f"❌ Raw data: {data_part}")
+                # If it's not JSON, treat as plain text error
+                if data_part is not None:
+                    error_content += data_part
                 continue
-
+    
+    print(f"✅ Streaming complete! Full response length: {len(full_content)}")
+    print(f"✅ Full response: {full_content}")
+    
+    # If we have error content and no regular content, return error
+    if error_content and not full_content:
+        print(f"❌ Returning error response: {error_content}")
+        return jsonify({
+            'error': 'API returned error in streaming response',
+            'details': error_content
+        }), 500
+    
+    # Return in OpenAI format for frontend compatibility
     return jsonify({
         'choices': [{
             'message': {
