@@ -6,8 +6,21 @@ export interface ChatMessage {
 }
 
 export interface Configuration {
+  id: string;
+  name: string;
   apiUrl: string;
   apiKey: string;
+  model: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ConfigurationInput {
+  name: string;
+  apiUrl: string;
+  apiKey: string;
+  model: string;
 }
 
 export interface ApiResponse {

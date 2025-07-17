@@ -3,6 +3,8 @@ from flask_cors import CORS
 import requests
 import os
 import json
+import uuid
+from datetime import datetime
 
 # Path to the React build directory
 BUILD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'build')
@@ -40,6 +42,7 @@ def chat_proxy():
         # Extract configuration from request
         api_url = data.get('api_url')
         api_key = data.get('api_key')
+        model = data.get('model')
         message = data.get('message')
         conversation_history = data.get('conversation_history', [])
         
@@ -51,15 +54,18 @@ def chat_proxy():
         print(f"Conversation history length: {len(conversation_history)}")
         print(f"Request data keys: {list(data.keys()) if data else 'None'}")
         
-        if not api_url or not api_key or not message:
-            print(f"❌ Missing required fields - URL: {bool(api_url)}, Key: {bool(api_key)}, Message: {bool(message)}")
-            return jsonify({'error': 'Missing required fields: api_url, api_key, message'}), 400
+        if not api_url or not message:
+            print(f"❌ Missing required fields - URL: {bool(api_url)}, Message: {bool(message)}")
+            return jsonify({'error': 'Missing required fields: api_url, message'}), 400
         
         # Prepare the request to the external API
         headers = {
-            'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json'
         }
+        
+        # Only add Authorization header if API key is provided
+        if api_key:
+            headers['Authorization'] = f'Bearer {api_key}'
         
         # Build messages array with conversation history
         messages = [
@@ -78,10 +84,13 @@ def chat_proxy():
         
         # API format for this specific endpoint
         payload = {
-            'model': 'meta-llama/Llama-4-Maverick-17B-128E',
             'messages': messages,
             'max_tokens': 1000
         }
+        
+        # Only include model in payload if it's specified in the configuration
+        if model:
+            payload['model'] = model
         
         print(f"📤 Sending request to: {api_url}")
         print(f"📦 Payload: {payload}")
@@ -186,6 +195,177 @@ def chat_proxy():
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
+# Configuration storage (in-memory for now - in production, use a database)
+configurations = {}
+
+@app.route('/api/configurations', methods=['GET'])
+def get_configurations():
+    """Get all configurations"""
+    print(f"\n=== Get Configurations Request ===")
+    config_list = list(configurations.values())
+    # Sort by creation date, most recent first
+    config_list.sort(key=lambda x: x['createdAt'], reverse=True)
+    print(f"Found {len(config_list)} configurations")
+    return jsonify(config_list)
+
+@app.route('/api/configurations', methods=['POST'])
+def create_configuration():
+    """Create a new configuration"""
+    try:
+        data = request.get_json()
+        
+        print(f"\n=== Create Configuration Request ===")
+        print(f"Data received: {data}")
+        
+        # Validate required fields
+        required_fields = ['name', 'apiUrl']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Check if name already exists
+        for config in configurations.values():
+            if config['name'].lower() == data['name'].lower():
+                return jsonify({'error': 'Configuration with this name already exists'}), 409
+        
+        # Create new configuration
+        config_id = str(uuid.uuid4())
+        now = datetime.now().isoformat()
+        
+        # If this is the first configuration, make it active
+        is_first_config = len(configurations) == 0
+        
+        new_config = {
+            'id': config_id,
+            'name': data['name'],
+            'apiUrl': data['apiUrl'],
+            'apiKey': data.get('apiKey', ''),
+            'model': data.get('model', ''),
+            'isActive': is_first_config,
+            'createdAt': now,
+            'updatedAt': now
+        }
+        
+        configurations[config_id] = new_config
+        print(f"Created configuration: {new_config['name']} (ID: {config_id})")
+        
+        return jsonify(new_config), 201
+        
+    except Exception as e:
+        print(f"🚨 Error creating configuration: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/configurations/<config_id>', methods=['PUT'])
+def update_configuration(config_id):
+    """Update an existing configuration"""
+    try:
+        data = request.get_json()
+        
+        print(f"\n=== Update Configuration Request ===")
+        print(f"Config ID: {config_id}")
+        print(f"Data received: {data}")
+        
+        if config_id not in configurations:
+            return jsonify({'error': 'Configuration not found'}), 404
+        
+        # Validate required fields
+        required_fields = ['name', 'apiUrl']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Check if name already exists (excluding current config)
+        for cid, config in configurations.items():
+            if cid != config_id and config['name'].lower() == data['name'].lower():
+                return jsonify({'error': 'Configuration with this name already exists'}), 409
+        
+        # Update configuration
+        config = configurations[config_id]
+        config['name'] = data['name']
+        config['apiUrl'] = data['apiUrl']
+        config['apiKey'] = data.get('apiKey', '')
+        config['model'] = data.get('model', '')
+        config['updatedAt'] = datetime.now().isoformat()
+        
+        print(f"Updated configuration: {config['name']} (ID: {config_id})")
+        
+        return jsonify(config)
+        
+    except Exception as e:
+        print(f"🚨 Error updating configuration: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/configurations/<config_id>', methods=['DELETE'])
+def delete_configuration(config_id):
+    """Delete a configuration"""
+    try:
+        print(f"\n=== Delete Configuration Request ===")
+        print(f"Config ID: {config_id}")
+        
+        if config_id not in configurations:
+            return jsonify({'error': 'Configuration not found'}), 404
+        
+        config = configurations[config_id]
+        was_active = config['isActive']
+        
+        # Delete the configuration
+        del configurations[config_id]
+        print(f"Deleted configuration: {config['name']} (ID: {config_id})")
+        
+        # If the deleted config was active, make another one active
+        if was_active and configurations:
+            # Make the first remaining configuration active
+            next_config = next(iter(configurations.values()))
+            next_config['isActive'] = True
+            next_config['updatedAt'] = datetime.now().isoformat()
+            print(f"Made {next_config['name']} the new active configuration")
+        
+        return jsonify({'message': 'Configuration deleted successfully'})
+        
+    except Exception as e:
+        print(f"🚨 Error deleting configuration: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/configurations/<config_id>/activate', methods=['POST'])
+def activate_configuration(config_id):
+    """Set a configuration as active"""
+    try:
+        print(f"\n=== Activate Configuration Request ===")
+        print(f"Config ID: {config_id}")
+        
+        if config_id not in configurations:
+            return jsonify({'error': 'Configuration not found'}), 404
+        
+        # Deactivate all configurations
+        for config in configurations.values():
+            config['isActive'] = False
+        
+        # Activate the selected configuration
+        config = configurations[config_id]
+        config['isActive'] = True
+        config['updatedAt'] = datetime.now().isoformat()
+        
+        print(f"Activated configuration: {config['name']} (ID: {config_id})")
+        
+        return jsonify(config)
+        
+    except Exception as e:
+        print(f"🚨 Error activating configuration: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/configurations/active', methods=['GET'])
+def get_active_configuration():
+    """Get the currently active configuration"""
+    print(f"\n=== Get Active Configuration Request ===")
+    
+    for config in configurations.values():
+        if config['isActive']:
+            print(f"Active configuration: {config['name']} (ID: {config['id']})")
+            return jsonify(config)
+    
+    print("No active configuration found")
+    return jsonify({'error': 'No active configuration found'}), 404
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
