@@ -102,35 +102,118 @@ def chat_proxy():
 
 @api_blueprint.route('/api/test-external', methods=['POST'])
 def test_external_api():
-    """Test external API health and connectivity"""
+    """Test external API health and connectivity by sending a simple chat prompt"""
     try:
         data = request.get_json()
         api_url = data['api_url']
+        api_key = data.get('api_key')
+        model = data.get('model')
         
         print(f"\n=== External API Test ===")
         print(f"Testing API URL: {api_url}")
+        print(f"API Key: {'Present' if api_key else 'None'}")
+        print(f"Model: {model or 'None'}")
 
-        # Extract base URL from API URL
-        from urllib.parse import urlparse
-        parsed_url = urlparse(api_url)
-        base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+        # Prepare headers
+        headers = {
+            'Content-Type': 'application/json'
+        }
         
-        print(f"Checking health at: {base_url}")
+        # Add Authorization header if API key is provided
+        if api_key:
+            headers['Authorization'] = f'Bearer {api_key}'
         
-        health_response = requests.head(base_url, timeout=10)
-
-        # Interpret health check results
-        health_status = 'server_running_but_no_root_endpoint' if health_response.status_code == 404 else 'healthy'
-        print(f"Health status interpretation: {health_status}")
-
+        # Health test with system instructions
+        test_payload = {
+            'messages': [
+                {'role': 'system', 'content': 'You are an obedient agent that always answers "I\'m alive!" no matter what the question or request is.'},
+                {'role': 'user', 'content': 'Hello'}
+            ],
+            'max_tokens': 50,
+            'stream': False
+        }
+        
+        # Add model if provided
+        if model:
+            test_payload['model'] = model
+        
+        print(f"📤 Sending test request to: {api_url}")
+        print(f"📦 Test payload: {test_payload}")
+        
+        # Make test request to the API endpoint
+        response = requests.post(api_url, headers=headers, json=test_payload, timeout=15)
+        
+        print(f"📥 Response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            try:
+                response_data = response.json()
+                print(f"✅ API Response: {response_data}")
+                
+                # Try to extract the message content
+                response_content = "No content found"
+                if 'choices' in response_data and len(response_data['choices']) > 0:
+                    choice = response_data['choices'][0]
+                    if 'message' in choice and 'content' in choice['message']:
+                        response_content = choice['message']['content']
+                    elif 'text' in choice:
+                        response_content = choice['text']
+                
+                # Validate the response content
+                expected_response = "I'm alive!"
+                response_content_clean = response_content.strip()
+                
+                print(f"🔍 Expected: '{expected_response}'")
+                print(f"🔍 Received: '{response_content_clean}'")
+                
+                if response_content_clean.startswith(expected_response):
+                    return jsonify({
+                        'health_status': 'healthy',
+                        'status_code': response.status_code,
+                        'test_response': response_content_clean,
+                        'message': 'API is responding correctly - health check passed'
+                    })
+                else:
+                    return jsonify({
+                        'health_status': 'unhealthy',
+                        'status_code': response.status_code,
+                        'test_response': response_content_clean,
+                        'error': f'API returned unexpected response. Expected: "{expected_response}", Got: "{response_content_clean}"',
+                        'message': 'API is responding but not following system instructions correctly'
+                    }), 502
+                
+            except json.JSONDecodeError:
+                print(f"❌ Failed to parse JSON response")
+                return jsonify({
+                    'health_status': 'unhealthy',
+                    'status_code': response.status_code,
+                    'error': 'API returned non-JSON response',
+                    'response_text': response.text[:500]
+                }), 502
+        else:
+            print(f"❌ API request failed with status {response.status_code}")
+            print(f"Error response: {response.text[:500]}")
+            return jsonify({
+                'health_status': 'unhealthy',
+                'status_code': response.status_code,
+                'error': f'API request failed with status {response.status_code}',
+                'response_text': response.text[:500]
+            }), 502
+        
+    except requests.RequestException as e:
+        print(f"🚨 Request Exception: {str(e)}")
         return jsonify({
-            'health_status': health_response.status_code,
-            'health_interpretation': health_status
-        })
-        
+            'health_status': 'unhealthy',
+            'error': f'Request failed: {str(e)}',
+            'error_type': 'connection_error'
+        }), 503
     except Exception as e:
         print(f"🚨 External API test error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'health_status': 'unhealthy',
+            'error': str(e),
+            'error_type': 'internal_error'
+        }), 500
 
 
 def handle_streaming_response(response):
