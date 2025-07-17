@@ -11,32 +11,6 @@ A ChatGPT-like single-page application (SPA) with a Python backend that serves a
 - 📱 Responsive design
 - 🎨 Modern UI with clear user/AI message distinction
 
-## Project Structure
-
-```
-michael_chat/
-├── README.md                 # This file
-├── requirements.txt          # Python dependencies
-├── .gitignore               # Git ignore file
-├── backend/
-│   └── app.py               # Python Flask server
-└── frontend/
-    ├── package.json         # Node.js dependencies
-    ├── tsconfig.json        # TypeScript configuration
-    ├── public/
-    │   └── index.html       # HTML template
-    └── src/
-        ├── index.tsx        # React entry point
-        ├── index.css        # Basic styles
-        ├── App.tsx          # Main App component
-        ├── App.css          # Main styles
-        ├── types/
-        │   └── types.ts     # TypeScript types
-        └── components/
-            ├── Chat.tsx     # Chat interface component
-            └── Configuration.tsx # Configuration component
-```
-
 ## Setup Instructions
 
 ### Prerequisites
@@ -130,9 +104,13 @@ npm start
 
 This will start the development server on `http://localhost:3000` with hot reloading.
 
+**Note:** The frontend development server is configured to proxy API requests to `http://localhost:5000` by default, but the Python backend runs on port 8000. For development, you may need to either:
+- Change the proxy in `frontend/package.json` to `"http://localhost:8000"`, or
+- Run the backend on port 5000 by modifying the port in `backend/app.py`
+
 ### Backend Development
 
-The Python backend includes debug mode enabled by default. Any changes to `backend/app.py` will automatically restart the server.
+The Python backend includes debug mode enabled by default. Any changes to the backend files (`backend/app.py`, `backend/server.py`, `backend/api.py`, etc.) will automatically restart the server.
 
 ### Building for Production
 
@@ -161,6 +139,11 @@ The Python backend includes debug mode enabled by default. Any changes to `backe
    - The backend includes CORS configuration for local development
    - For production, you may need to adjust CORS settings
 
+4. **Development server proxy errors:**
+   - The frontend development server (`npm start`) may fail to proxy API requests
+   - Ensure the backend is running on the correct port (8000 by default)
+   - Check that the proxy setting in `frontend/package.json` matches the backend port
+
 ### Development Tips
 
 - Configuration is stored in browser localStorage
@@ -177,7 +160,21 @@ The Python backend includes debug mode enabled by default. Any changes to `backe
 
 ## License
 
-This project is provided as-is for development and learning purposes.
+This project is licensed under the Apache License, Version 2.0. See the [LICENSE](LICENSE) file for details.
+
+Copyright 2025 Michael's Chat
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 
 ## Contributing
 
