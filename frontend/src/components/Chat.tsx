@@ -68,21 +68,66 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model }, ref) => 
         })
       });
 
-      const data = await response.json();
-      
       if (response.ok) {
-        // Extract AI response from OpenAI format
-        const aiContent = data.choices?.[0]?.message?.content || 'No response received';
+        const contentType = response.headers.get('content-type');
         
-        const aiMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          content: aiContent,
-          sender: 'ai',
-          timestamp: new Date()
-        };
+        if (contentType && contentType.includes('text/event-stream')) {
+          // Handle streaming response
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder("utf-8");
+
+          if (reader) {
+            let isDone = false;
+            let aiMessageId = (Date.now() + 1).toString();
+            let isFirstChunk = true;
+            
+            // Add initial AI message
+            setMessages(prev => [...prev, {
+              id: aiMessageId,
+              content: '',
+              sender: 'ai',
+              timestamp: new Date()
+            }]);
+
+            while (!isDone) {
+              const { done, value } = await reader.read();
+              isDone = done;
+              if (value) {
+                const chunk = decoder.decode(value, { stream: !done });
+                
+                // Hide "Thinking..." indicator when first chunk arrives
+                if (isFirstChunk) {
+                  setIsLoading(false);
+                  isFirstChunk = false;
+                }
+                
+                // Update the AI message with new content
+                setMessages(prevMessages => {
+                  return prevMessages.map(msg => 
+                    msg.id === aiMessageId 
+                      ? { ...msg, content: msg.content + chunk }
+                      : msg
+                  );
+                });
+              }
+            }
+          }
+        } else {
+          // Handle regular JSON response
+          const data = await response.json();
+          const aiContent = data.choices?.[0]?.message?.content || 'No response received';
+          
+          const aiMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            content: aiContent,
+            sender: 'ai',
+            timestamp: new Date()
+          };
+          
+          setMessages(prev => [...prev, aiMessage]);
+        }
         
-        setMessages(prev => [...prev, aiMessage]);
-        // Focus input after AI response
+        // Focus input after completion
         setTimeout(() => {
           inputRef.current?.focus();
         }, 100);
@@ -90,13 +135,12 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model }, ref) => 
         // Error handling
         const errorMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          content: `Error: ${data.error || 'Unknown error occurred'}`,
+          content: `Error: ${response.statusText || 'Unknown error occurred'}`,
           sender: 'system',
           timestamp: new Date()
         };
-        
+
         setMessages(prev => [...prev, errorMessage]);
-        // Focus input after error message
         setTimeout(() => {
           inputRef.current?.focus();
         }, 100);
