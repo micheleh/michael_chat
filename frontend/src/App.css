@@ -167,6 +167,9 @@ body {
   padding: 1rem;
   border-radius: 8px;
   position: relative;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .message.user {
@@ -191,6 +194,9 @@ body {
 
 .message-content {
   margin-bottom: 0.5rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .message-content strong {
@@ -202,6 +208,27 @@ body {
 .message-content p {
   margin: 0;
   line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* ReactMarkdown specific styles */
+.message-content * {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.message-content pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow-x: auto;
+}
+
+.message-content code {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .message-time {

@@ -3,7 +3,7 @@ API proxy and health check endpoints for Michael's Chat server
 """
 import json
 import requests
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
 from config_manager import ConfigurationManager
 
 api_blueprint = Blueprint('api_blueprint', __name__)
@@ -60,7 +60,7 @@ def chat_proxy():
         payload = {
             'messages': messages,
             'max_tokens': 1000,
-            'stream': False  # Disable streaming for more reliable responses
+            'stream': True  # Enable streaming for real-time response
         }
         
         # Only include model in payload if it's specified in the configuration
@@ -70,8 +70,8 @@ def chat_proxy():
         print(f"📤 Sending request to: {api_url}")
         print(f"📦 Payload: {payload}")
         
-        # Make request to external API
-        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+        # Make request to external API with streaming
+        response = requests.post(api_url, headers=headers, json=payload, timeout=30, stream=True)
         
         print(f"📥 Response status: {response.status_code}")
 
@@ -80,8 +80,8 @@ def chat_proxy():
             print(f"Content-Type: {content_type}")
             
             if 'text/event-stream' in content_type:
-                # Handle streaming response
-                return handle_streaming_response(response)
+                # Handle streaming response with proper Flask streaming
+                return Response(stream_response(response), mimetype='text/event-stream')
             else:
                 # Handle regular JSON response
                 return handle_json_response(response)
@@ -214,6 +214,38 @@ def test_external_api():
             'error': str(e),
             'error_type': 'internal_error'
         }), 500
+
+
+def stream_response(response):
+    """Generator function to stream response chunks to frontend"""
+    print(f"🔄 Starting streaming response...")
+    
+    try:
+        for line in response.iter_lines(decode_unicode=True):
+            if line and line.startswith('data: '):
+                data_part = line[6:]  # Remove 'data: ' prefix
+                if data_part.strip() == '[DONE]':
+                    break
+                try:
+                    chunk_data = json.loads(data_part)
+                    
+                    # Check for choices and content
+                    if 'choices' in chunk_data and len(chunk_data['choices']) > 0:
+                        delta = chunk_data['choices'][0].get('delta', {})
+                        if 'content' in delta and delta['content'] is not None:
+                            content = delta['content']
+                            print(f"📤 Streaming content: {content}")
+                            yield content
+                            
+                except json.JSONDecodeError as e:
+                    print(f"❌ JSON decode error: {e}")
+                    continue
+                    
+        print(f"✅ Streaming complete!")
+        
+    except Exception as e:
+        print(f"🚨 Streaming error: {e}")
+        yield f"Error: {str(e)}"
 
 
 def handle_streaming_response(response):
