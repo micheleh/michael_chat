@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent, FormEvent, useRef, useEffect } from 'react';
+import React, { useState, ChangeEvent, FormEvent, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage } from '../types/types';
 
@@ -8,11 +8,16 @@ interface ChatProps {
   model?: string;
 }
 
-const Chat: React.FC<ChatProps> = ({ apiUrl, apiKey, model }) => {
+export interface ChatRef {
+  focus: () => void;
+}
+
+const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model }, ref) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -21,6 +26,15 @@ const Chat: React.FC<ChatProps> = ({ apiUrl, apiKey, model }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Expose focus method to parent component
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }));
 
   const sendMessage = async (content: string) => {
     if (!content.trim()) return;
@@ -68,6 +82,10 @@ const Chat: React.FC<ChatProps> = ({ apiUrl, apiKey, model }) => {
         };
         
         setMessages(prev => [...prev, aiMessage]);
+        // Focus input after AI response
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
       } else {
         // Error handling
         const errorMessage: ChatMessage = {
@@ -78,6 +96,10 @@ const Chat: React.FC<ChatProps> = ({ apiUrl, apiKey, model }) => {
         };
         
         setMessages(prev => [...prev, errorMessage]);
+        // Focus input after error message
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
       }
     } catch (error) {
       const errorMessage: ChatMessage = {
@@ -88,6 +110,10 @@ const Chat: React.FC<ChatProps> = ({ apiUrl, apiKey, model }) => {
       };
       
       setMessages(prev => [...prev, errorMessage]);
+      // Focus input after network error
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     } finally {
       setIsLoading(false);
     }
@@ -102,6 +128,10 @@ const Chat: React.FC<ChatProps> = ({ apiUrl, apiKey, model }) => {
 
   const clearChat = () => {
     setMessages([]);
+    // Focus input after clearing chat
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
   };
 
   return (
@@ -150,6 +180,7 @@ const Chat: React.FC<ChatProps> = ({ apiUrl, apiKey, model }) => {
       
       <form onSubmit={onSubmit} className="input-form">
         <input
+          ref={inputRef}
           type="text"
           value={input}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
@@ -163,6 +194,6 @@ const Chat: React.FC<ChatProps> = ({ apiUrl, apiKey, model }) => {
       </form>
     </div>
   );
-};
+});
 
 export default Chat;

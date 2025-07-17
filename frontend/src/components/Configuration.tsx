@@ -22,6 +22,8 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
     model: ''
   });
   const [showApiKey, setShowApiKey] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
+  const [showTestResult, setShowTestResult] = useState(false);
 
   // Load configurations on component mount
   useEffect(() => {
@@ -187,30 +189,31 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
         },
         body: JSON.stringify({
           api_url: config.apiUrl,
-          api_key: config.apiKey
+          api_key: config.apiKey,
+          model: config.model
         })
       });
 
       const data = await response.json();
       
-      if (response.ok) {
-        let message = `External API Test Results for "${config.name}":\n\n`;
-        message += `Health Check: ${data.health_status === 200 ? '✅ Success' : '❌ Failed'} (${data.health_status})\n`;
-        message += `Health Response: ${data.health_response}\n\n`;
-        
-        if (data.chat_test_status) {
-          message += `Chat Test: ${data.chat_test_status === 200 ? '✅ Success' : '❌ Failed'} (${data.chat_test_status})\n`;
-          message += `Chat Response: ${data.chat_test_response}\n`;
-        } else {
-          message += data.note || 'Chat test not performed';
-        }
-        
-        alert(message);
-      } else {
-        alert('External API test failed: ' + (data.error || 'Unknown error'));
-      }
+      // Set the test result data and show modal
+      setTestResult({
+        config,
+        response: data,
+        success: response.ok,
+        statusCode: response.status
+      });
+      setShowTestResult(true);
+      
     } catch (error) {
-      alert('External API test failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      // Set error result and show modal
+      setTestResult({
+        config,
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        statusCode: null
+      });
+      setShowTestResult(true);
     }
   };
 
@@ -390,6 +393,64 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Test Result Modal */}
+      {showTestResult && testResult && (
+        <div className="config-form-overlay">
+          <div className="config-form-modal">
+            <h3>External API Test Results</h3>
+            
+            <div className="test-result-content">
+              <div className="test-result-header">
+                <h4>Configuration: {testResult.config.name}</h4>
+                <div className={`test-status ${testResult.success ? 'success' : 'failure'}`}>
+                  {testResult.success ? '✅ Test Passed' : '❌ Test Failed'}
+                </div>
+              </div>
+              
+              {testResult.response && (
+                <div className="test-result-details">
+                  <p><strong>Status:</strong> {testResult.response.health_status || 'Unknown'}</p>
+                  <p><strong>Status Code:</strong> {testResult.response.status_code || testResult.statusCode || 'N/A'}</p>
+                  <p><strong>Message:</strong> {testResult.response.message || 'No message'}</p>
+                  
+                  {testResult.response.test_response && (
+                    <div className="api-response">
+                      <p><strong>API Response:</strong></p>
+                      <pre>{testResult.response.test_response}</pre>
+                    </div>
+                  )}
+                  
+                  {testResult.response.error && (
+                    <div className="error-details">
+                      <p><strong>Error:</strong> {testResult.response.error}</p>
+                      {testResult.response.error_type && (
+                        <p><strong>Error Type:</strong> {testResult.response.error_type}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {testResult.error && (
+                <div className="error-details">
+                  <p><strong>Connection Error:</strong> {testResult.error}</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="form-actions">
+              <button 
+                type="button" 
+                onClick={() => setShowTestResult(false)} 
+                className="cancel-button"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

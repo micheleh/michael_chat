@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import Chat from './components/Chat';
+import React, { useState, useEffect, useRef } from 'react';
+import Chat, { ChatRef } from './components/Chat';
 import Configuration from './components/Configuration';
 import { Configuration as ConfigType } from './types/types';
 import './App.css';
@@ -7,6 +7,7 @@ import './App.css';
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'chat' | 'config'>('config');
   const [activeConfiguration, setActiveConfiguration] = useState<ConfigType | null>(null);
+  const chatRef = useRef<ChatRef>(null);
 
   // Handle configuration changes from the Configuration component
   const handleConfigurationChange = (config: ConfigType | null) => {
@@ -18,6 +19,14 @@ const App: React.FC = () => {
 
   // Check if configuration is complete
   const isConfigComplete = activeConfiguration && activeConfiguration.apiUrl;
+
+  // Focus chat input when switching to chat view
+  useEffect(() => {
+    if (currentView === 'chat' && isConfigComplete) {
+      // Focus the chat input after the component has rendered
+      chatRef.current?.focus();
+    }
+  }, [currentView, isConfigComplete]);
 
   return (
     <div className="app">
@@ -63,6 +72,7 @@ const App: React.FC = () => {
 
         {currentView === 'chat' && isConfigComplete && (
           <Chat 
+            ref={chatRef}
             apiUrl={activeConfiguration.apiUrl}
             apiKey={activeConfiguration.apiKey}
             model={activeConfiguration.model}
