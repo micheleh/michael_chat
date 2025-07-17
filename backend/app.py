@@ -5,6 +5,8 @@ import os
 import json
 import uuid
 from datetime import datetime
+import pickle
+import os
 
 # Path to the React build directory
 BUILD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'build')
@@ -196,8 +198,35 @@ def chat_proxy():
         traceback.print_exc()
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
-# Configuration storage (in-memory for now - in production, use a database)
+# Configuration storage with file persistence
+CONFIG_FILE = 'configurations.json'
 configurations = {}
+
+def load_configurations():
+    """Load configurations from file"""
+    global configurations
+    try:
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as f:
+                configurations = json.load(f)
+            print(f"✅ Loaded {len(configurations)} configurations from {CONFIG_FILE}")
+        else:
+            print(f"📄 No configuration file found at {CONFIG_FILE}, starting with empty configurations")
+    except Exception as e:
+        print(f"⚠️ Error loading configurations: {e}")
+        configurations = {}
+
+def save_configurations():
+    """Save configurations to file"""
+    try:
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(configurations, f, indent=2)
+        print(f"💾 Saved {len(configurations)} configurations to {CONFIG_FILE}")
+    except Exception as e:
+        print(f"❌ Error saving configurations: {e}")
+
+# Load configurations on startup
+load_configurations()
 
 @app.route('/api/configurations', methods=['GET'])
 def get_configurations():
@@ -248,6 +277,7 @@ def create_configuration():
         }
         
         configurations[config_id] = new_config
+        save_configurations()
         print(f"Created configuration: {new_config['name']} (ID: {config_id})")
         
         return jsonify(new_config), 201
@@ -287,6 +317,7 @@ def update_configuration(config_id):
         config['apiKey'] = data.get('apiKey', '')
         config['model'] = data.get('model', '')
         config['updatedAt'] = datetime.now().isoformat()
+        save_configurations()
         
         print(f"Updated configuration: {config['name']} (ID: {config_id})")
         
@@ -321,6 +352,7 @@ def delete_configuration(config_id):
             next_config['updatedAt'] = datetime.now().isoformat()
             print(f"Made {next_config['name']} the new active configuration")
         
+        save_configurations()
         return jsonify({'message': 'Configuration deleted successfully'})
         
     except Exception as e:
@@ -345,6 +377,7 @@ def activate_configuration(config_id):
         config = configurations[config_id]
         config['isActive'] = True
         config['updatedAt'] = datetime.now().isoformat()
+        save_configurations()
         
         print(f"Activated configuration: {config['name']} (ID: {config_id})")
         
@@ -388,44 +421,75 @@ def test_external_api():
         if not api_url:
             return jsonify({'error': 'API URL required'}), 400
             
-        # Test health endpoint first
-        health_url = api_url.replace('/chat/completions', '/chat/health')
-        print(f"Checking health at: {health_url}")
+        # Extract base URL from API URL for health check
+        # For URLs like http://localhost:10001/v1/chat/completions -> http://localhost:10001
+        # For URLs like https://model-service.athena-preprod.otxlab.net/v1/chat/completions -> https://model-service.athena-preprod.otxlab.net
+        from urllib.parse import urlparse
+        parsed_url = urlparse(api_url)
+        base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         
-        health_response = requests.get(health_url, timeout=10)
+        print(f"Checking health at: {base_url}")
+        
+        health_response = requests.head(base_url, timeout=10)
         print(f"Health check status: {health_response.status_code}")
-        print(f"Health response: {health_response.text}")
+        print(f"Health response headers: {dict(health_response.headers)}")
         
-        # Test a simple chat request
-        if api_key:
-            print(f"Testing chat endpoint with API key...")
+        # Interpret health check results
+        health_status = "healthy"
+        if health_response.status_code == 404:
+            health_status = "server_running_but_no_root_endpoint"
+        elif health_response.status_code >= 400:
+            health_status = "server_error"
+        elif health_response.status_code in [200, 301, 302, 403]:
+            health_status = "healthy"
+        
+        print(f"Health status interpretation: {health_status}")
+        
+        # Test a simple chat request (optional)
+        chat_test_status = None
+        chat_test_response = None
+        chat_test_error = None
+        
+        try:
+            print(f"Testing chat endpoint...")
             headers = {
-                'Authorization': f'Bearer {api_key}',
                 'Content-Type': 'application/json'
             }
             
+            # Only add Authorization header if API key is provided
+            if api_key:
+                headers['Authorization'] = f'Bearer {api_key}'
+                print(f"Using API key for chat test")
+            else:
+                print(f"Testing chat endpoint without API key")
+            
             test_payload = {
-                'model': 'meta-llama/Llama-4-Maverick-17B-128E',
                 'messages': [{'role': 'user', 'content': 'Hello'}],
                 'max_tokens': 10
             }
             
-            chat_response = requests.post(api_url, headers=headers, json=test_payload, timeout=10)
-            print(f"Chat test status: {chat_response.status_code}")
-            print(f"Chat response: {chat_response.text[:200]}...")
+            # Only include model if provided
+            if data.get('model'):
+                test_payload['model'] = data.get('model')
             
-            return jsonify({
-                'health_status': health_response.status_code,
-                'health_response': health_response.text,
-                'chat_test_status': chat_response.status_code,
-                'chat_test_response': chat_response.text[:200]
-            })
-        else:
-            return jsonify({
-                'health_status': health_response.status_code,
-                'health_response': health_response.text,
-                'note': 'API key not provided, skipping chat test'
-            })
+            chat_response = requests.post(api_url, headers=headers, json=test_payload, timeout=10)
+            chat_test_status = chat_response.status_code
+            chat_test_response = chat_response.text[:200]
+            print(f"Chat test status: {chat_test_status}")
+            print(f"Chat response: {chat_test_response}...")
+            
+        except Exception as e:
+            chat_test_error = str(e)
+            print(f"Chat test failed: {chat_test_error}")
+        
+        return jsonify({
+            'health_status': health_response.status_code,
+            'health_interpretation': health_status,
+            'health_response': health_response.text,
+            'chat_test_status': chat_test_status,
+            'chat_test_response': chat_test_response,
+            'chat_test_error': chat_test_error
+        })
             
     except Exception as e:
         print(f"🚨 External API test error: {str(e)}")
