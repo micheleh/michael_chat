@@ -18,7 +18,8 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
   const [formData, setFormData] = useState<ConfigurationInput>({
     name: '',
     apiUrl: '',
-    apiKey: ''
+    apiKey: '',
+    model: ''
   });
   const [showApiKey, setShowApiKey] = useState(false);
 
@@ -55,8 +56,8 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name.trim() || !formData.apiUrl.trim() || !formData.apiKey.trim()) {
-      setError('All fields are required');
+    if (!formData.name.trim() || !formData.apiUrl.trim()) {
+      setError('Name and API URL are required');
       return;
     }
 
@@ -105,7 +106,8 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
     setFormData({
       name: config.name,
       apiUrl: config.apiUrl,
-      apiKey: config.apiKey
+      apiKey: config.apiKey,
+      model: config.model
     });
     setShowForm(true);
   };
@@ -216,7 +218,8 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
     setFormData({
       name: '',
       apiUrl: '',
-      apiKey: ''
+      apiKey: '',
+      model: ''
     });
     setShowApiKey(false);
   };
@@ -265,6 +268,7 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
               <div className="config-info">
                 <h3>{config.name}</h3>
                 <p className="config-url">{config.apiUrl}</p>
+                <p className="config-url">Model: {config.model}</p>
                 <p className="config-meta">
                   Created: {new Date(config.createdAt).toLocaleDateString()}
                   {config.updatedAt !== config.createdAt && (
@@ -345,6 +349,18 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
               </div>
 
               <div className="form-group">
+                <label htmlFor="model">Model:</label>
+                <input
+                  type="text"
+                  id="model"
+                  value={formData.model}
+                  onChange={(e) => setFormData({...formData, model: e.target.value})}
+                  placeholder="e.g., gpt-4, phi4:latest, claude-3-opus (optional)"
+                  className="config-input"
+                />
+              </div>
+
+              <div className="form-group">
                 <label htmlFor="apiKey">API Key:</label>
                 <div className="api-key-container">
                   <input
@@ -352,8 +368,7 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
                     id="apiKey"
                     value={formData.apiKey}
                     onChange={(e) => setFormData({...formData, apiKey: e.target.value})}
-                    placeholder="Enter your API key"
-                    required
+                    placeholder="Enter your API key (optional)"
                     className="config-input"
                   />
                   <button

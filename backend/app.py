@@ -42,6 +42,7 @@ def chat_proxy():
         # Extract configuration from request
         api_url = data.get('api_url')
         api_key = data.get('api_key')
+        model = data.get('model')
         message = data.get('message')
         conversation_history = data.get('conversation_history', [])
         
@@ -53,15 +54,18 @@ def chat_proxy():
         print(f"Conversation history length: {len(conversation_history)}")
         print(f"Request data keys: {list(data.keys()) if data else 'None'}")
         
-        if not api_url or not api_key or not message:
-            print(f"❌ Missing required fields - URL: {bool(api_url)}, Key: {bool(api_key)}, Message: {bool(message)}")
-            return jsonify({'error': 'Missing required fields: api_url, api_key, message'}), 400
+        if not api_url or not message:
+            print(f"❌ Missing required fields - URL: {bool(api_url)}, Message: {bool(message)}")
+            return jsonify({'error': 'Missing required fields: api_url, message'}), 400
         
         # Prepare the request to the external API
         headers = {
-            'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json'
         }
+        
+        # Only add Authorization header if API key is provided
+        if api_key:
+            headers['Authorization'] = f'Bearer {api_key}'
         
         # Build messages array with conversation history
         messages = [
@@ -80,10 +84,13 @@ def chat_proxy():
         
         # API format for this specific endpoint
         payload = {
-            'model': 'meta-llama/Llama-4-Maverick-17B-128E',
             'messages': messages,
             'max_tokens': 1000
         }
+        
+        # Only include model in payload if it's specified in the configuration
+        if model:
+            payload['model'] = model
         
         print(f"📤 Sending request to: {api_url}")
         print(f"📦 Payload: {payload}")
@@ -212,7 +219,7 @@ def create_configuration():
         print(f"Data received: {data}")
         
         # Validate required fields
-        required_fields = ['name', 'apiUrl', 'apiKey']
+        required_fields = ['name', 'apiUrl']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'Missing required field: {field}'}), 400
@@ -233,7 +240,8 @@ def create_configuration():
             'id': config_id,
             'name': data['name'],
             'apiUrl': data['apiUrl'],
-            'apiKey': data['apiKey'],
+            'apiKey': data.get('apiKey', ''),
+            'model': data.get('model', ''),
             'isActive': is_first_config,
             'createdAt': now,
             'updatedAt': now
@@ -262,7 +270,7 @@ def update_configuration(config_id):
             return jsonify({'error': 'Configuration not found'}), 404
         
         # Validate required fields
-        required_fields = ['name', 'apiUrl', 'apiKey']
+        required_fields = ['name', 'apiUrl']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'error': f'Missing required field: {field}'}), 400
@@ -276,7 +284,8 @@ def update_configuration(config_id):
         config = configurations[config_id]
         config['name'] = data['name']
         config['apiUrl'] = data['apiUrl']
-        config['apiKey'] = data['apiKey']
+        config['apiKey'] = data.get('apiKey', '')
+        config['model'] = data.get('model', '')
         config['updatedAt'] = datetime.now().isoformat()
         
         print(f"Updated configuration: {config['name']} (ID: {config_id})")

@@ -5,9 +5,10 @@ import { ChatMessage } from '../types/types';
 interface ChatProps {
   apiUrl: string;
   apiKey: string;
+  model?: string;
 }
 
-const Chat: React.FC<ChatProps> = ({ apiUrl, apiKey }) => {
+const Chat: React.FC<ChatProps> = ({ apiUrl, apiKey, model }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -48,6 +49,7 @@ const Chat: React.FC<ChatProps> = ({ apiUrl, apiKey }) => {
           message: content,
           api_url: apiUrl,
           api_key: apiKey,
+          model: model,
           conversation_history: messages  // Send previous messages as context
         })
       });

@@ -17,7 +17,7 @@ const App: React.FC = () => {
   };
 
   // Check if configuration is complete
-  const isConfigComplete = activeConfiguration && activeConfiguration.apiUrl && activeConfiguration.apiKey;
+  const isConfigComplete = activeConfiguration && activeConfiguration.apiUrl;
 
   return (
     <div className="app">
@@ -65,6 +65,7 @@ const App: React.FC = () => {
           <Chat 
             apiUrl={activeConfiguration.apiUrl}
             apiKey={activeConfiguration.apiKey}
+            model={activeConfiguration.model}
           />
         )}
 
