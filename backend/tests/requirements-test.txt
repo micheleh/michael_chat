@@ -1,0 +1,10 @@
+# Test dependencies
+pytest>=7.0.0
+pytest-flask>=1.2.0
+pytest-cov>=4.0.0
+requests-mock>=1.10.0
+
+# Main dependencies (should match your main requirements)
+Flask>=2.0.0
+Flask-CORS>=4.0.0
+requests>=2.25.0
