@@ -178,6 +178,28 @@ def test_external_api():
                     except Exception as e:
                         image_support_error = str(e)
                     
+                    # Find and update the configuration with image support information
+                    try:
+                        # Find configuration by API URL and model
+                        config_to_update = None
+                        for config in config_manager.get_all_configurations():
+                            if (config['apiUrl'] == api_url and 
+                                config.get('model') == model):
+                                config_to_update = config
+                                break
+                        
+                        # Update the configuration with image support info
+                        if config_to_update and image_support_result is not None:
+                            config_manager.update_image_support(config_to_update['id'], image_support_result)
+                            print(f"✅ Updated configuration '{config_to_update['name']}' with image support: {image_support_result}")
+                        elif config_to_update:
+                            print(f"⚠️ Configuration '{config_to_update['name']}' found but image support test result is None")
+                        else:
+                            print(f"⚠️ No configuration found matching API URL: {api_url} and model: {model}")
+                            
+                    except Exception as e:
+                        print(f"🚨 Error updating configuration with image support: {str(e)}")
+                    
                     return jsonify({
                         'health_status': 'healthy',
                         'status_code': response.status_code,

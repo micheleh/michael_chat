@@ -212,7 +212,11 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
         statusCode: response.status
       });
       setShowTestResult(true);
-      
+
+      if (response.ok) {
+        await loadConfigurations();
+      }
+
     } catch (error) {
       // Set error result and show modal
       setTestResult({
@@ -296,11 +300,6 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
                   )}
                   {config.supportsImages === null && (
                     <span className="image-support-unknown">❓ Unknown</span>
-                  )}
-                  {config.imageTestAt && (
-                    <span className="image-test-date">
-                      • Tested: {new Date(config.imageTestAt).toLocaleDateString()}
-                    </span>
                   )}
                 </div>
               </div>
