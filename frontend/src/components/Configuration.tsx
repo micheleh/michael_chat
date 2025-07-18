@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
 import { Configuration, ConfigurationInput } from '../types/types';
 
 interface ConfigurationProps {
@@ -25,12 +25,15 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
   const [testResult, setTestResult] = useState<any>(null);
   const [showTestResult, setShowTestResult] = useState(false);
 
-  // Load configurations on component mount
+  // Use ref to store the callback to prevent infinite loops
+  const onConfigurationChangeRef = useRef(onConfigurationChange);
+  
+  // Update the ref when the callback changes
   useEffect(() => {
-    loadConfigurations();
-  }, []);
+    onConfigurationChangeRef.current = onConfigurationChange;
+  }, [onConfigurationChange]);
 
-  const loadConfigurations = async () => {
+  const loadConfigurations = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/configurations');
@@ -41,9 +44,10 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
         
         // Find and set active configuration
         const active = data.find((config: Configuration) => config.isActive);
+        setActiveConfig(active);
+        // Use the ref to call the callback
         if (active) {
-          setActiveConfig(active);
-          onConfigurationChange(active);
+          onConfigurationChangeRef.current(active);
         }
       } else {
         throw new Error(data.error || 'Failed to load configurations');
@@ -53,7 +57,12 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // No dependencies needed now
+
+  // Load configurations on component mount
+  useEffect(() => {
+    loadConfigurations();
+  }, [loadConfigurations]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -90,7 +99,7 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
         // If this is the first configuration, it becomes active automatically
         if (!isEditing && configurations.length === 0) {
           setActiveConfig(data);
-          onConfigurationChange(data);
+          onConfigurationChangeRef.current(data);
         }
       } else {
         throw new Error(data.error || 'Failed to save configuration');
@@ -153,7 +162,7 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
       
       if (response.ok) {
         setActiveConfig(data);
-        onConfigurationChange(data);
+        onConfigurationChangeRef.current(data);
         await loadConfigurations();
       } else {
         throw new Error(data.error || 'Failed to activate configuration');
@@ -168,7 +177,6 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
   const handleTestConnection = async () => {
     try {
       const response = await fetch('/api/health');
-      const data = await response.json();
       
       if (response.ok) {
         alert('Backend connection successful!');
@@ -278,6 +286,23 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
                     <span> • Updated: {new Date(config.updatedAt).toLocaleDateString()}</span>
                   )}
                 </p>
+                <div className="image-support-info">
+                  <span className="image-support-label">Image Support:</span>
+                  {config.supportsImages === true && (
+                    <span className="image-support-yes">✅ Yes</span>
+                  )}
+                  {config.supportsImages === false && (
+                    <span className="image-support-no">❌ No</span>
+                  )}
+                  {config.supportsImages === null && (
+                    <span className="image-support-unknown">❓ Unknown</span>
+                  )}
+                  {config.imageTestAt && (
+                    <span className="image-test-date">
+                      • Tested: {new Date(config.imageTestAt).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="config-actions">
                 {config.isActive ? (
@@ -417,6 +442,24 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
                   <p><strong>Status Code:</strong> {testResult.response.status_code || testResult.statusCode || 'N/A'}</p>
                   <p><strong>Message:</strong> {testResult.response.message || 'No message'}</p>
                   
+                  {/* Image Support Information */}
+                  <div className="image-support-test-result">
+                    <p><strong>Image Support:</strong>
+                      {testResult.response.supports_images === true && (
+                        <span className="image-support-yes"> ✅ Yes</span>
+                      )}
+                      {testResult.response.supports_images === false && (
+                        <span className="image-support-no"> ❌ No</span>
+                      )}
+                      {testResult.response.supports_images === null && (
+                        <span className="image-support-unknown"> ❓ Unknown</span>
+                      )}
+                    </p>
+                    {testResult.response.image_test_error && (
+                      <p><strong>Image Test Error:</strong> {testResult.response.image_test_error}</p>
+                    )}
+                  </div>
+                  
                   {testResult.response.test_response && (
                     <div className="api-response">
                       <p><strong>API Response:</strong></p>
@@ -469,6 +512,8 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
           <li>API calls are proxied through the Python backend</li>
           <li>Only one configuration can be active at a time</li>
           <li>The active configuration is used for all chat requests</li>
+          <li>Image support is automatically tested when saving or testing configurations</li>
+          <li>Image support testing helps identify models that can process images</li>
         </ul>
       </div>
     </div>
