@@ -12,6 +12,8 @@ export interface Configuration {
   apiKey: string;
   model: string;
   isActive: boolean;
+  supportsImages?: boolean | null;
+  imageTestAt?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

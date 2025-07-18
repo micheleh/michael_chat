@@ -66,6 +66,8 @@ class ConfigurationManager:
             'apiKey': api_key,
             'model': model,
             'isActive': is_first_config,
+            'supportsImages': None,  # Will be tested later
+            'imageTestAt': None,
             'createdAt': now,
             'updatedAt': now
         }
@@ -140,3 +142,16 @@ class ConfigurationManager:
             if config['isActive']:
                 return config
         return None
+    
+    def update_image_support(self, config_id, supports_images):
+        """Update image support status for a configuration"""
+        if config_id not in self.configurations:
+            raise ValueError('Configuration not found')
+        
+        config = self.configurations[config_id]
+        config['supportsImages'] = supports_images
+        config['imageTestAt'] = datetime.now().isoformat()
+        config['updatedAt'] = datetime.now().isoformat()
+        
+        self.save_configurations()
+        return config
