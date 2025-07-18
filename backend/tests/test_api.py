@@ -1,4 +1,40 @@
 import pytest
+import json
+
+
+def validate_streaming_response(response_text):
+    """Helper function to validate streaming response content."""
+    assert response_text is not None, "Streaming response should not be empty"
+    assert len(response_text.strip()) > 0, "Streaming response should contain content"
+    
+    # Verify we got some actual content (not just whitespace)
+    assert any(char.isalnum() for char in response_text), "Streaming response should contain alphanumeric characters"
+    
+    # Check if it looks like streaming data (could contain event-stream format)
+    lines = response_text.strip().split('\n')
+    has_content = False
+    for line in lines:
+        if line.strip() and not line.startswith('data:'):
+            # Found actual content that's not event-stream metadata
+            has_content = True
+            break
+        elif line.startswith('data:'):
+            # Try to parse JSON data from event stream
+            try:
+                data_part = line[5:].strip()  # Remove 'data:' prefix
+                if data_part and data_part != '[DONE]':
+                    chunk_data = json.loads(data_part)
+                    if 'choices' in chunk_data:
+                        has_content = True
+                        break
+            except json.JSONDecodeError:
+                # Not JSON, might be plain text content
+                if data_part.strip():
+                    has_content = True
+                    break
+    
+    assert has_content, "Streaming response should contain meaningful content"
+    return True
 
 
 def validate_chat_response(response, message_context=""):
@@ -223,8 +259,23 @@ class TestChatAPI:
         # Fail if the local API server is not available
         assert response.status_code == 200, f"Local API server is not available or returned error (status: {response.status_code}). Please start the local API server at http://localhost:10001"
         
-        # Validate successful response structure
-        validate_chat_response(response)
+        # Check if response is streaming or JSON
+        content_type = response.headers.get('content-type', '')
+        
+        if 'text/event-stream' in content_type:
+            # Handle streaming response
+            assert response.status_code == 200
+            
+            # Read the streaming response
+            response_text = response.get_data(as_text=True)
+            
+            # Validate the streaming response
+            validate_streaming_response(response_text)
+            
+            print(f"✅ Streaming response received: {response_text[:100]}...")
+        else:
+            # Handle JSON response (fallback)
+            validate_chat_response(response)
 
 
 class TestHealthAPI:
