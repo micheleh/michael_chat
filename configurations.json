@@ -5,8 +5,34 @@
     "apiUrl": "http://localhost:10001/v1/chat/completions",
     "apiKey": "",
     "model": "llava:13b",
-    "isActive": true,
+    "isActive": false,
     "createdAt": "2025-07-17T22:21:13.185754",
-    "updatedAt": "2025-07-17T22:22:03.001918"
+    "updatedAt": "2025-07-20T13:53:47.187030",
+    "supportsImages": true,
+    "imageTestAt": "2025-07-20T13:53:47.187008"
+  },
+  "maverick-config-id-001": {
+    "id": "maverick-config-id-001",
+    "name": "Maverick Model",
+    "apiUrl": "https://model-service.athena-preprod.otxlab.net/v1/chat/completions",
+    "apiKey": "93548b53-64c6-41a7-a04e-82c4b43982b4",
+    "model": "meta-llama/Llama-4-Maverick-17B-128E",
+    "isActive": true,
+    "createdAt": "2025-07-20T10:00:00.000000",
+    "updatedAt": "2025-07-20T13:53:22.069987",
+    "supportsImages": true,
+    "imageTestAt": "2025-07-20T13:53:22.069966"
+  },
+  "phi4-config-id-001": {
+    "id": "phi4-config-id-001",
+    "name": "Phi4 Model",
+    "apiUrl": "http://localhost:10001/v1/chat/completions",
+    "apiKey": "",
+    "model": "phi4:latest",
+    "isActive": false,
+    "createdAt": "2025-07-20T09:00:00.000000",
+    "updatedAt": "2025-07-20T13:53:31.840692",
+    "supportsImages": true,
+    "imageTestAt": "2025-07-20T13:53:31.840663"
   }
 }
