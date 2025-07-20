@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Chat, { ChatRef } from './components/Chat';
 import Configuration from './components/Configuration';
 import { Configuration as ConfigType } from './types/types';
@@ -7,7 +7,31 @@ import './App.css';
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'chat' | 'config'>('chat');
   const [activeConfiguration, setActiveConfiguration] = useState<ConfigType | null>(null);
+  const [configurations, setConfigurations] = useState<ConfigType[]>([]);
   const chatRef = useRef<ChatRef>(null);
+
+  // Load all configurations from the server
+  const loadConfigurations = useCallback(async () => {
+    try {
+      const response = await fetch('/api/configurations');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setConfigurations(data);
+        const active = data.find((config: ConfigType) => config.isActive);
+        setActiveConfiguration(active || null);
+      } else {
+        console.error('Failed to load configurations:', data.error);
+      }
+    } catch (err) {
+      console.error('Error loading configurations:', err);
+    }
+  }, []);
+
+  // Load configurations on app startup
+  useEffect(() => {
+    loadConfigurations();
+  }, [loadConfigurations]);
 
   // Handle configuration changes from the Configuration component
   const handleConfigurationChange = (config: ConfigType | null) => {
@@ -17,6 +41,30 @@ const App: React.FC = () => {
     // If we just set up the first configuration and we're on config view, switch to chat
     if (config && currentView === 'config' && !activeConfiguration) {
       setCurrentView('chat');
+    }
+    
+    // Reload configurations to get the updated list
+    loadConfigurations();
+  };
+
+  // Handle configuration changes from the Chat component dropdown
+  const handleChatConfigurationChange = async (configId: string) => {
+    try {
+      const response = await fetch(`/api/configurations/${configId}/activate`, {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setActiveConfiguration(data);
+        // Reload all configurations to update their active status
+        loadConfigurations();
+      } else {
+        const error = await response.json();
+        console.error('Failed to activate configuration:', error);
+      }
+    } catch (err) {
+      console.error('Error activating configuration:', err);
     }
   };
 
@@ -81,6 +129,9 @@ const App: React.FC = () => {
             apiKey={activeConfiguration.apiKey}
             model={activeConfiguration.model}
             supportsImages={activeConfiguration.supportsImages || false}
+            configurations={configurations}
+            activeConfiguration={activeConfiguration}
+            onConfigurationChange={handleChatConfigurationChange}
           />
         )}
 

@@ -1,6 +1,6 @@
 import React, { useState, ChangeEvent, FormEvent, useRef, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { ChatMessage } from '../types/types';
+import { ChatMessage, Configuration } from '../types/types';
 import ImageThumbnail from './ImageThumbnail';
 
 interface ChatProps {
@@ -8,13 +8,16 @@ interface ChatProps {
   apiKey: string;
   model?: string;
   supportsImages?: boolean;
+  configurations?: Configuration[];
+  activeConfiguration: Configuration | null;
+  onConfigurationChange?: (configId: string) => void;
 }
 
 export interface ChatRef {
   focus: () => void;
 }
 
-const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsImages }, ref) => {
+const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsImages, configurations = [], activeConfiguration, onConfigurationChange }, ref) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -357,7 +360,27 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
     <div className="chat-page">
       <div className="chat-container">
         <div className="chat-header">
-          <h3>Chat Session</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <h3>Chat Session</h3>
+            {configurations.length > 1 && (
+              <div className="config-selector">
+                <label htmlFor="active-config" style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginRight: '0.5rem' }}>Configuration:</label>
+                <select 
+                  id="active-config"
+                  value={activeConfiguration?.id || ''}
+                  onChange={(e) => onConfigurationChange?.(e.target.value)}
+                  className="config-dropdown"
+                  disabled={isLoading}
+                >
+                  {configurations.map((config) => (
+                    <option key={config.id} value={config.id}>
+                      {config.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button onClick={clearChat} className="clear-button">
               Clear Chat
