@@ -381,6 +381,28 @@ body {
   box-shadow: 0 4px 12px rgba(208, 2, 27, 0.4);
 }
 
+/* Stop button styling - similar to clear button but with warning color */
+.stop-button {
+  background-color: var(--accent-warning);
+  border: none;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  transition: all 0.2s ease-in-out;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stop-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 166, 35, 0.4);
+}
+
 /* Messages container - matching config card body style */
 .messages-container {
   padding: 1.5rem;
