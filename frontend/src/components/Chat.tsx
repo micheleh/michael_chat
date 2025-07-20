@@ -49,11 +49,26 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
         if (item.kind === 'file' && item.type.startsWith('image/')) {
           const file = item.getAsFile();
           if (file) {
-            const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-            setImages((prev) => [
-              ...prev,
-              { id, file, url: URL.createObjectURL(file), name: file.name || 'pasted-image.png', size: file.size },
-            ]);
+            const fileName = file.name || 'pasted-image.png';
+            const fileSize = file.size;
+            
+            // Check for duplicate images in current message (by name and size)
+            setImages((prev) => {
+              const isDuplicate = prev.some(img => 
+                img.name === fileName && img.size === fileSize
+              );
+              
+              if (isDuplicate) {
+                console.log('Duplicate image detected, skipping:', fileName);
+                return prev; // Don't add duplicate
+              }
+              
+              const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+              return [
+                ...prev,
+                { id, file, url: URL.createObjectURL(file), name: fileName, size: fileSize },
+              ];
+            });
           }
         }
       }

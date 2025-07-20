@@ -45,6 +45,9 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
         if (active) {
           onConfigurationChangeRef.current(active);
         }
+        else {
+          onConfigurationChangeRef.current(null);
+        } 
       } else {
         throw new Error(data.error || 'Failed to load configurations');
       }
