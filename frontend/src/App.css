@@ -34,6 +34,87 @@ body {
   flex-direction: column;
 }
 
+/* Navigation Bar */
+.navbar {
+  background-color: #2c3e50;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #34495e;
+}
+
+.nav-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.nav-brand h1 {
+  font-family: var(--font-heading);
+  color: white;
+  font-size: 1.5rem;
+  margin: 0;
+  font-weight: 700;
+}
+
+.active-config-indicator {
+  font-size: 0.8rem;
+  color: #bdc3c7;
+  margin-top: 0.2rem;
+  font-weight: 400;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.nav-button {
+  background: transparent;
+  border: 2px solid #3498db;
+  color: #3498db;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.nav-button:hover:not(:disabled) {
+  background-color: #3498db;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.nav-button.active {
+  background-color: #3498db;
+  color: white;
+}
+
+.nav-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #7f8c8d;
+  color: #7f8c8d;
+}
+
+.nav-button:disabled:hover {
+  background: transparent;
+  transform: none;
+}
+
+/* Main Content Area */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -238,6 +319,133 @@ body {
 }
 
 
+/* Chat */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  max-width: 900px;
+  margin: 2rem auto;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.chat-header {
+  background-color: #34495e;
+  color: white;
+  padding: 0.5rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.clear-button {
+  background-color: var(--accent-danger);
+  border: none;
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
+}
+
+.clear-button:hover {
+  background-color: #b8453e;
+}
+
+.messages-container {
+  padding: 1rem;
+  flex: 1;
+  overflow-y: auto;
+  background-color: #f7f9fa;
+  min-height: 400px;
+  max-height: 60vh;
+}
+
+.welcome-message {
+  text-align: center;
+  color: var(--text-dark);
+  font-style: italic;
+  margin: 1rem 0;
+}
+
+.message {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.message-content {
+  background-color: #ecf0f1;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  max-width: 75%;
+}
+
+.message.user .message-content {
+  background-color: #5499c7;
+  color: white;
+  align-self: flex-end;
+}
+
+.message-time {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 0.2rem;
+  align-self: flex-end;
+}
+
+.input-form {
+  background-color: #f2f4f5;
+  padding: 0.5rem;
+  border-top: 1px solid #e0e4e7;
+}
+
+.input-row {
+  display: flex;
+  align-items: stretch;
+}
+
+.message-input {
+  flex: 1;
+  padding: 0.8rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px 0 0 4px;
+  font-family: var(--font-body);
+}
+
+.send-button {
+  background-color: var(--primary-color);
+  border: none;
+  color: white;
+  padding: 0.8rem 1.2rem;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  transition: background-color 0.2s ease;
+}
+
+.send-button:hover {
+  background-color: #357ab8;
+}
+
+.image-thumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.message-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 /* Info Card */
 .info-card {
   background-color: white;
@@ -261,6 +469,45 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+/* Configuration Warning */
+.config-warning {
+  max-width: 500px;
+  margin: 3rem auto;
+  text-align: center;
+  background-color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+.config-warning h2 {
+  font-family: var(--font-heading);
+  color: var(--text-dark);
+  margin-bottom: 1rem;
+}
+
+.config-warning p {
+  color: var(--text-light);
+  margin-bottom: 1.5rem;
+}
+
+.config-button {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.config-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
 }
 
 /* Modal (Add/Edit Form) */

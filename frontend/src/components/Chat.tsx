@@ -283,7 +283,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
   return (
     <div className="chat-container">
       <div className="chat-header">
-        <h2>Michael's Chat</h2>
+        <span>Chat Session</span>
         <button onClick={clearChat} className="clear-button">
           Clear Chat
         </button>
