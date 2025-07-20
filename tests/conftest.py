@@ -12,8 +12,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-# Add parent directory to path to import modules
-backend_path = str(Path(__file__).parent.parent)
+# Add backend directory to path to import modules
+backend_path = str(Path(__file__).parent.parent / 'backend')
 sys.path.insert(0, backend_path)
 
 # Import modules from backend

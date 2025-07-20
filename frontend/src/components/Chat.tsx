@@ -189,14 +189,13 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
             const tempStreamId = 'temp-' + Date.now();
             setCurrentStreamId(tempStreamId);
             
-            // Add initial AI message
+            // Add initial AI message with placeholder content
             setMessages(prev => [...prev, {
               id: aiMessageId,
-              content: '',
+              content: '...',
               sender: 'ai',
               timestamp: new Date()
             }]);
-
             while (!isDone) {
               const { done, value } = await reader.read();
               isDone = done;
@@ -233,11 +232,14 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
                     
                     // Update the AI message with new content
                     setMessages(prevMessages => {
-                      return prevMessages.map(msg => 
-                        msg.id === aiMessageId 
-                          ? { ...msg, content: msg.content + content }
-                          : msg
-                      );
+                      return prevMessages.map(msg => {
+                        if (msg.id === aiMessageId) {
+                          // Replace placeholder dots with first real content
+                          const currentContent = msg.content === '...' ? '' : msg.content;
+                          return { ...msg, content: currentContent + content };
+                        }
+                        return msg;
+                      });
                     });
                   }
                 }
@@ -398,7 +400,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
           </div>
         ))}
         
-        {isLoading && (
+        {isLoading && !currentStreamId && (
           <div className="message ai">
             <div className="message-content">
               <strong>AI:</strong>

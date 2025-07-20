@@ -1,0 +1,14 @@
+{
+  "9227ed55-6802-4d4b-bb33-93f63f5aa884": {
+    "id": "9227ed55-6802-4d4b-bb33-93f63f5aa884",
+    "name": "Image Config",
+    "apiUrl": "http://image",
+    "apiKey": "",
+    "model": "",
+    "isActive": true,
+    "supportsImages": true,
+    "imageTestAt": "2025-07-20T17:41:18.083285",
+    "createdAt": "2025-07-20T17:41:18.083118",
+    "updatedAt": "2025-07-20T17:41:18.083287"
+  }
+}

@@ -136,3 +136,8 @@ frontend/build/
 config.local.json
 secrets.json
 configurations.json
+.coverage
+htmlcov/
+*.coverage
+coverage.xml
+test_configurations.json
