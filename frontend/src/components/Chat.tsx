@@ -281,15 +281,16 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
   };
 
   return (
-    <div className="chat-container">
-      <div className="chat-header">
-        <span>Chat Session</span>
-        <button onClick={clearChat} className="clear-button">
-          Clear Chat
-        </button>
-      </div>
-      
-      <div className="messages-container">
+    <div className="chat-page">
+      <div className="chat-container">
+        <div className="chat-header">
+          <h3>Chat Session</h3>
+          <button onClick={clearChat} className="clear-button">
+            Clear Chat
+          </button>
+        </div>
+        
+        <div className="messages-container">
         {messages.length === 0 && (
           <div className="welcome-message">
             <p>Welcome to Michael's Chat! Start a conversation.</p>
@@ -334,9 +335,9 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
         )}
         
         <div ref={messagesEndRef} />
-      </div>
-      
-      <form onSubmit={onSubmit} className="input-form">
+        </div>
+        
+        <form onSubmit={onSubmit} className="input-form">
         {supportsImages && images.length > 0 && (
           <div className="image-thumbnails">
             {images.map((image) => (
@@ -363,7 +364,8 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
             {isLoading ? 'Sending...' : 'Send'}
           </button>
         </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 });
