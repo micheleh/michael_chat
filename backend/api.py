@@ -12,6 +12,9 @@ from config_manager import ConfigurationManager
 api_blueprint = Blueprint('api_blueprint', __name__)
 config_manager = ConfigurationManager()
 
+# Global dictionary to track active streaming requests
+active_streams = {}
+
 @api_blueprint.route('/api/chat', methods=['POST'])
 def chat_proxy():
     """Proxy endpoint for chat API requests"""
@@ -133,8 +136,20 @@ def chat_proxy():
             print(f"Content-Type: {content_type}")
             
             if 'text/event-stream' in content_type:
+                # Generate unique stream ID and register it
+                import uuid
+                stream_id = str(uuid.uuid4())
+                active_streams[stream_id] = {'cancelled': False}
+                
                 # Handle streaming response with proper Flask streaming
-                return Response(stream_response(response), mimetype='text/event-stream')
+                def stream_with_headers():
+                    # Send stream ID as first chunk
+                    yield f"data: {{\"stream_id\": \"{stream_id}\"}}\n\n"
+                    # Then stream the actual response
+                    for chunk in stream_response(response, stream_id):
+                        yield f"data: {chunk}\n\n"
+                
+                return Response(stream_with_headers(), mimetype='text/event-stream')
             else:
                 # Handle regular JSON response
                 return handle_json_response(response)
@@ -397,12 +412,17 @@ def test_image_support(api_url, api_key, model):
         raise e
 
 
-def stream_response(response):
+def stream_response(response, stream_id):
     """Generator function to stream response chunks to frontend"""
-    print(f"🔄 Starting streaming response...")
+    print(f"🔄 Starting streaming response with ID: {stream_id}")
     
     try:
         for line in response.iter_lines(decode_unicode=True):
+            # Check if this stream has been cancelled
+            if stream_id not in active_streams or active_streams[stream_id].get('cancelled', False):
+                print(f"🛑 Stream {stream_id} cancelled by user")
+                break
+                
             if line and line.startswith('data: '):
                 data_part = line[6:]  # Remove 'data: ' prefix
                 if data_part.strip() == '[DONE]':
@@ -422,11 +442,15 @@ def stream_response(response):
                     print(f"❌ JSON decode error: {e}")
                     continue
                     
-        print(f"✅ Streaming complete!")
+        print(f"✅ Streaming complete for ID: {stream_id}")
         
     except Exception as e:
-        print(f"🚨 Streaming error: {e}")
+        print(f"🚨 Streaming error for ID {stream_id}: {e}")
         yield f"Error: {str(e)}"
+    finally:
+        # Clean up the stream from active_streams
+        if stream_id in active_streams:
+            del active_streams[stream_id]
 
 
 def handle_streaming_response(response):
@@ -572,7 +596,7 @@ def update_configuration(config_id):
 @api_blueprint.route('/api/configurations/<config_id>', methods=['DELETE'])
 def delete_configuration(config_id):
     try:
-        deleted_config = config_manager.delete_configuration(config_id)
+        config_manager.delete_configuration(config_id)
         return jsonify({'message': 'Configuration deleted successfully'})
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
@@ -595,6 +619,27 @@ def get_active_configuration():
     if active_config:
         return jsonify(active_config)
     return jsonify({'error': 'No active configuration found'}), 404
+
+@api_blueprint.route('/api/chat/stop', methods=['POST'])
+def stop_stream():
+    """Stop an active streaming response"""
+    try:
+        data = request.get_json()
+        stream_id = data.get('stream_id')
+        
+        if not stream_id:
+            return jsonify({'error': 'Missing stream_id'}), 400
+        
+        if stream_id in active_streams:
+            active_streams[stream_id]['cancelled'] = True
+            print(f"🛑 Stream {stream_id} marked for cancellation")
+            return jsonify({'message': 'Stream stopped successfully'})
+        else:
+            return jsonify({'error': 'Stream not found or already completed'}), 404
+            
+    except Exception as e:
+        print(f"🚨 Error stopping stream: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @api_blueprint.route('/api/health', methods=['GET'])
 def health_check():

@@ -19,6 +19,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [images, setImages] = useState<Array<{ id: string; file: File; url: string; name: string; size: number }>>([]);
+  const [currentStreamId, setCurrentStreamId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -63,7 +64,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
                 return prev; // Don't add duplicate
               }
               
-              const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+              const id = Date.now().toString() + Math.random().toString(36).substring(2, 11);
               return [
                 ...prev,
                 { id, file, url: URL.createObjectURL(file), name: fileName, size: fileSize },
@@ -181,7 +182,12 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
           if (reader) {
             let isDone = false;
             let aiMessageId = (Date.now() + 1).toString();
-            let isFirstChunk = true;
+            let isFirstStreamChunk = true;
+            let buffer = '';
+            
+            // Set a temporary stream ID immediately to show stop button
+            const tempStreamId = 'temp-' + Date.now();
+            setCurrentStreamId(tempStreamId);
             
             // Add initial AI message
             setMessages(prev => [...prev, {
@@ -195,24 +201,52 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
               const { done, value } = await reader.read();
               isDone = done;
               if (value) {
-                const chunk = decoder.decode(value, { stream: !done });
+                const rawChunk = decoder.decode(value, { stream: !done });
+                buffer += rawChunk;
                 
-                // Hide "Thinking..." indicator when first chunk arrives
-                if (isFirstChunk) {
-                  setIsLoading(false);
-                  isFirstChunk = false;
+                // Process complete SSE events from buffer
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                
+                for (const line of lines) {
+                  if (line.trim() === '') continue; // Skip empty lines
+                  
+                  // Check for stream ID in the first chunk
+                  if (isFirstStreamChunk && line.includes('stream_id')) {
+                    const streamIdMatch = line.match(/"stream_id":\s*"([^"]+)"/);
+                    if (streamIdMatch) {
+                      setCurrentStreamId(streamIdMatch[1]);
+                      console.log('Stream ID received:', streamIdMatch[1]);
+                      continue;
+                    }
+                  }
+                  isFirstStreamChunk = false;
+                  
+                  // Parse SSE data lines
+                  if (line.startsWith('data: ')) {
+                    const content = line.substring(6); // Remove 'data: ' prefix
+                    
+                    // Skip empty content or control data
+                    if (!content.trim() || content.includes('stream_id')) {
+                      continue;
+                    }
+                    
+                    // Update the AI message with new content
+                    setMessages(prevMessages => {
+                      return prevMessages.map(msg => 
+                        msg.id === aiMessageId 
+                          ? { ...msg, content: msg.content + content }
+                          : msg
+                      );
+                    });
+                  }
                 }
-                
-                // Update the AI message with new content
-                setMessages(prevMessages => {
-                  return prevMessages.map(msg => 
-                    msg.id === aiMessageId 
-                      ? { ...msg, content: msg.content + chunk }
-                      : msg
-                  );
-                });
               }
             }
+            
+            // Reset stream ID and loading state when done
+            setCurrentStreamId(null);
+            setIsLoading(false);
           }
         } else {
           // Handle regular JSON response
@@ -268,18 +302,37 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
     }
   };
 
-  const onSubmit = (event: FormEvent) => {
+  const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if ((input.trim() || images.length > 0) && !isLoading) {
-      sendMessage(input, images);
+      await sendMessage(input, images);
     }
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = async (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       if ((input.trim() || images.length > 0) && !isLoading) {
-        sendMessage(input, images);
+        await sendMessage(input, images);
+      }
+    }
+  };
+
+  const stopStream = async () => {
+    if (currentStreamId) {
+      try {
+        await fetch('/api/chat/stop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stream_id: currentStreamId }),
+        });
+        setCurrentStreamId(null);
+        setIsLoading(false);
+        console.log('Stream stopped successfully');
+      } catch (error) {
+        console.error('Error stopping stream:', error);
+        setCurrentStreamId(null);
+        setIsLoading(false);
       }
     }
   };
@@ -289,6 +342,9 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
     // Clear images and revoke object URLs
     images.forEach(img => URL.revokeObjectURL(img.url));
     setImages([]);
+    // Reset streaming state
+    setCurrentStreamId(null);
+    setIsLoading(false);
     // Focus input after clearing chat
     setTimeout(() => {
       inputRef.current?.focus();
@@ -300,9 +356,11 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
       <div className="chat-container">
         <div className="chat-header">
           <h3>Chat Session</h3>
-          <button onClick={clearChat} className="clear-button">
-            Clear Chat
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button onClick={clearChat} className="clear-button">
+              Clear Chat
+            </button>
+          </div>
         </div>
         
         <div className="messages-container">
@@ -375,9 +433,15 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
             disabled={isLoading}
             className="message-input"
           />
-          <button type="submit" disabled={isLoading || (!input.trim() && images.length === 0)} className="send-button">
-            {isLoading ? 'Sending...' : 'Send'}
-          </button>
+          {isLoading && currentStreamId ? (
+            <button type="button" onClick={stopStream} className="stop-button">
+              ⏹ Stop
+            </button>
+          ) : (
+            <button type="submit" disabled={isLoading || (!input.trim() && images.length === 0)} className="send-button">
+              {isLoading ? 'Sending...' : 'Send'}
+            </button>
+          )}
         </div>
         </form>
       </div>
