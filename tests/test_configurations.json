@@ -1,14 +1,14 @@
 {
-  "9227ed55-6802-4d4b-bb33-93f63f5aa884": {
-    "id": "9227ed55-6802-4d4b-bb33-93f63f5aa884",
+  "c6e34640-47e7-4c89-bd87-6fc6d5fd930f": {
+    "id": "c6e34640-47e7-4c89-bd87-6fc6d5fd930f",
     "name": "Image Config",
     "apiUrl": "http://image",
     "apiKey": "",
     "model": "",
     "isActive": true,
     "supportsImages": true,
-    "imageTestAt": "2025-07-20T17:41:18.083285",
-    "createdAt": "2025-07-20T17:41:18.083118",
-    "updatedAt": "2025-07-20T17:41:18.083287"
+    "imageTestAt": "2025-07-20T18:19:07.114686",
+    "createdAt": "2025-07-20T18:19:07.114454",
+    "updatedAt": "2025-07-20T18:19:07.114688"
   }
 }
