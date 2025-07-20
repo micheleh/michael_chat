@@ -122,13 +122,27 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
 
     try {
       // Send to Python backend with conversation history
+      const sanitizedHistory = messages.map(msg => {
+        const { images, ...rest } = msg;
+        if (!images) return rest;
+        return {
+          ...rest,
+          images: images.map(img => ({
+            id: img.id,
+            name: img.name,
+            size: img.size,
+            url: 'about:blank' // Don't send user's local object URLs to the backend
+          }))
+        };
+      });
+
       const requestBody = {
         message: content,
         images: processedImages,
         api_url: apiUrl,
         api_key: apiKey,
         model: model,
-        conversation_history: messages  // Send previous messages as context
+        conversation_history: sanitizedHistory  // Send sanitized history
       };
       
       console.log('Sending chat request:', requestBody);
@@ -188,6 +202,9 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
         } else {
           // Handle regular JSON response
           const data = await response.json();
+          if (typeof data !== 'object' || data === null) {
+            throw new Error('Received invalid response from server');
+          }
           const aiContent = data.choices?.[0]?.message?.content || 'No response received';
           
           const aiMessage: ChatMessage = {
@@ -264,15 +281,16 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
   };
 
   return (
-    <div className="chat-container">
-      <div className="chat-header">
-        <h2>Michael's Chat</h2>
-        <button onClick={clearChat} className="clear-button">
-          Clear Chat
-        </button>
-      </div>
-      
-      <div className="messages-container">
+    <div className="chat-page">
+      <div className="chat-container">
+        <div className="chat-header">
+          <h3>Chat Session</h3>
+          <button onClick={clearChat} className="clear-button">
+            Clear Chat
+          </button>
+        </div>
+        
+        <div className="messages-container">
         {messages.length === 0 && (
           <div className="welcome-message">
             <p>Welcome to Michael's Chat! Start a conversation.</p>
@@ -317,9 +335,9 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
         )}
         
         <div ref={messagesEndRef} />
-      </div>
-      
-      <form onSubmit={onSubmit} className="input-form">
+        </div>
+        
+        <form onSubmit={onSubmit} className="input-form">
         {supportsImages && images.length > 0 && (
           <div className="image-thumbnails">
             {images.map((image) => (
@@ -346,7 +364,8 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
             {isLoading ? 'Sending...' : 'Send'}
           </button>
         </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 });
