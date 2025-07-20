@@ -18,7 +18,38 @@ class ConfigurationManager:
         try:
             if os.path.exists(self.config_file):
                 with open(self.config_file, 'r') as f:
-                    self.configurations = json.load(f)
+                    data = json.load(f)
+                    
+                    # Handle list format (convert to dictionary)
+                    if isinstance(data, list):
+                        self.configurations = {}
+                        for config in data:
+                            # Convert to internal format
+                            config_id = config.get('id', str(uuid.uuid4()))
+                            now = datetime.now().isoformat()
+                            
+                            internal_config = {
+                                'id': config_id,
+                                'name': config['name'],
+                                'apiUrl': config.get('api_url', ''),
+                                'apiKey': config.get('api_key', ''),
+                                'model': config.get('model', ''),
+                                'isActive': config.get('active', False),
+                                'supportsImages': config.get('image_support'),
+                                'imageTestAt': now if config.get('image_support') is not None else None,
+                                'createdAt': config.get('createdAt', now),
+                                'updatedAt': config.get('updatedAt', now)
+                            }
+                            
+                            self.configurations[config_id] = internal_config
+                    
+                    # Handle dictionary format (already in internal format)
+                    elif isinstance(data, dict):
+                        self.configurations = data
+                    
+                    else:
+                        self.configurations = {}
+                        
                 print(f"✅ Loaded {len(self.configurations)} configurations from {self.config_file}")
             else:
                 print(f"📄 No configuration file found at {self.config_file}, starting with empty configurations")
