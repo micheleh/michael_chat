@@ -196,7 +196,6 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
               sender: 'ai',
               timestamp: new Date()
             }]);
-
             while (!isDone) {
               const { done, value } = await reader.read();
               isDone = done;
