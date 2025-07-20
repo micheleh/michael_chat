@@ -200,7 +200,32 @@ def test_external_api():
         
         if response.status_code == 200:
             try:
-                response_data = response.json()
+                # Handle both streaming and JSON responses
+                response_text = response.text.strip()
+                print(f"📥 Raw response: {response_text[:200]}...")
+                
+                response_data = None
+                
+                # Check if it's a streaming response (starts with 'data:')
+                if response_text.startswith('data:'):
+                    # Parse streaming response
+                    lines = response_text.split('\n')
+                    for line in lines:
+                        if line.startswith('data:') and line != 'data: [DONE]':
+                            json_str = line[5:].strip()  # Remove 'data:' prefix
+                            if json_str:
+                                try:
+                                    response_data = json.loads(json_str)
+                                    break
+                                except json.JSONDecodeError:
+                                    continue
+                else:
+                    # Regular JSON response
+                    response_data = response.json()
+                
+                if not response_data:
+                    raise json.JSONDecodeError("No valid JSON found in response", response_text, 0)
+                
                 print(f"✅ API Response: {response_data}")
                 
                 # Try to extract the message content

@@ -152,6 +152,8 @@ body {
 
 .btn-secondary:hover:not(:disabled) {
   background-color: #f0f0f0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .btn-warning {
@@ -234,7 +236,6 @@ body {
 }
 
 .config-card:hover {
-  transform: translateY(-4px);
   box-shadow: 0 6px 16px var(--shadow-color);
   border-color: var(--primary-color);
 }

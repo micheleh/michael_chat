@@ -24,6 +24,7 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
   const [showApiKey, setShowApiKey] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
   const [showTestResult, setShowTestResult] = useState(false);
+  const [testingConfigId, setTestingConfigId] = useState<string | null>(null);
 
   const onConfigurationChangeRef = useRef(onConfigurationChange);
 
@@ -44,6 +45,9 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
         if (active) {
           onConfigurationChangeRef.current(active);
         }
+        else {
+          onConfigurationChangeRef.current(null);
+        } 
       } else {
         throw new Error(data.error || 'Failed to load configurations');
       }
@@ -174,6 +178,7 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
 
   const handleTestExternalAPI = async (config: Configuration) => {
     try {
+      setTestingConfigId(config.id);
       const response = await fetch('/api/test-external', {
         method: 'POST',
         headers: {
@@ -204,6 +209,8 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
         statusCode: null
       });
       setShowTestResult(true);
+    } finally {
+      setTestingConfigId(null);
     }
   };
 
@@ -284,8 +291,16 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
                       <FaPowerOff /> Activate
                     </button>
                   )}
-                  <button onClick={() => handleTestExternalAPI(config)} className="btn btn-secondary" disabled={loading}>
-                    <FaPlay /> Test
+                  <button 
+                    onClick={() => handleTestExternalAPI(config)} 
+                    className="btn btn-secondary" 
+                    disabled={loading || testingConfigId === config.id}
+                  >
+                    {testingConfigId === config.id ? (
+                      <>🔄 Testing...</>
+                    ) : (
+                      <><FaPlay /> Test</>
+                    )}
                   </button>
                   <button onClick={() => handleEdit(config)} className="btn btn-secondary" disabled={loading}>
                     <FaEdit /> Edit

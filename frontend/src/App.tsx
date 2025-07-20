@@ -5,7 +5,7 @@ import { Configuration as ConfigType } from './types/types';
 import './App.css';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'chat' | 'config'>('config');
+  const [currentView, setCurrentView] = useState<'chat' | 'config'>('chat');
   const [activeConfiguration, setActiveConfiguration] = useState<ConfigType | null>(null);
   const chatRef = useRef<ChatRef>(null);
 
@@ -13,13 +13,16 @@ const App: React.FC = () => {
   const handleConfigurationChange = (config: ConfigType | null) => {
     console.log('Configuration changed:', config);
     setActiveConfiguration(config);
-    if (config && currentView === 'config') {
-      // Don't auto-switch to chat, let user decide
+    
+    // If we just set up the first configuration and we're on config view, switch to chat
+    if (config && currentView === 'config' && !activeConfiguration) {
+      setCurrentView('chat');
     }
   };
 
   // Check if configuration is complete
   const isConfigComplete = activeConfiguration && activeConfiguration.apiUrl;
+
 
   // Focus chat input when switching to chat view
   useEffect(() => {
@@ -81,11 +84,11 @@ const App: React.FC = () => {
           />
         )}
 
-        {currentView === 'config' && (
+        <div style={{ display: currentView === 'config' ? 'block' : 'none' }}>
           <Configuration
             onConfigurationChange={handleConfigurationChange}
           />
-        )}
+        </div>
       </main>
     </div>
   );
