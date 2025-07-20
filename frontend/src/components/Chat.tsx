@@ -372,11 +372,14 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
                   className="config-dropdown"
                   disabled={isLoading}
                 >
-                  {configurations.map((config) => (
-                    <option key={config.id} value={config.id}>
-                      {config.name}
-                    </option>
-                  ))}
+                  {configurations
+                    .slice()
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((config) => (
+                      <option key={config.id} value={config.id}>
+                        {config.name}
+                      </option>
+                    ))}
                 </select>
               </div>
             )}

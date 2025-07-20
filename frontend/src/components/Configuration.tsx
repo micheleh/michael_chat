@@ -263,7 +263,10 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
               <p>No configurations found. Create your first one to get started.</p>
             </div>
           ) : (
-            configurations.map((config) => (
+            configurations
+              .slice()
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((config) => (
               <div key={config.id} className={`config-card ${config.isActive ? 'active' : ''}`}>
                 <div className="config-card-header">
                   <h3>{config.name}</h3>
