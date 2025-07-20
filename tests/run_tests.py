@@ -21,7 +21,7 @@ def run_tests(test_type="all"):
     """Run the tests."""
     print(f"Running {test_type} tests...")
     
-    cmd = [sys.executable, "-m", "pytest", "test_api.py", "-v"]
+    cmd = [sys.executable, "-m", "pytest", ".", "-v"]
     
     if test_type == "unit":
         cmd.extend(["-m", "not integration"])
