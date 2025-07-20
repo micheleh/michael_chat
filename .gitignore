@@ -135,3 +135,4 @@ frontend/build/
 # Local configuration
 config.local.json
 secrets.json
+configurations.json
