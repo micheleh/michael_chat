@@ -2,6 +2,7 @@ import React, { useState, ChangeEvent, FormEvent, useRef, useEffect, useImperati
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage, Configuration } from '../types/types';
 import ImageThumbnail from './ImageThumbnail';
+import ConfigurationDropdown from './ConfigurationDropdown';
 
 interface ChatProps {
   apiUrl: string;
@@ -364,23 +365,13 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
             <h3>Chat Session</h3>
             {configurations.length > 1 && (
               <div className="config-selector">
-                <label htmlFor="active-config" style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginRight: '0.5rem' }}>Configuration:</label>
-                <select 
-                  id="active-config"
-                  value={activeConfiguration?.id || ''}
-                  onChange={(e) => onConfigurationChange?.(e.target.value)}
-                  className="config-dropdown"
+                <label htmlFor="active-config">Configuration:</label>
+                <ConfigurationDropdown
+                  configurations={configurations}
+                  activeConfiguration={activeConfiguration}
+                  onConfigurationChange={onConfigurationChange || (() => {})}
                   disabled={isLoading}
-                >
-                  {configurations
-                    .slice()
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((config) => (
-                      <option key={config.id} value={config.id}>
-                        {config.name}
-                      </option>
-                    ))}
-                </select>
+                />
               </div>
             )}
           </div>
