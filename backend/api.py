@@ -18,22 +18,43 @@ def chat_proxy():
     try:
         data = request.get_json()
         
+        # Check if data is None
+        if data is None:
+            print(f"❌ No JSON data received in request")
+            return jsonify({
+                'error': 'No JSON data received',
+                'details': 'Request must contain valid JSON data'
+            }), 400
+        
         # Extract configuration from request
         api_url = data.get('api_url')
         api_key = data.get('api_key')
         model = data.get('model')
         message = data.get('message')
+        images = data.get('images', [])
         conversation_history = data.get('conversation_history', [])
         
         # Debug prints
         print(f"\n=== Chat Request Debug ===")
+        print(f"Raw request data: {data}")
         print(f"API URL: {api_url}")
         print(f"API Key: {'*' * (len(api_key) - 8) + api_key[-8:] if api_key and len(api_key) > 8 else 'None'}")
         print(f"Message: {message}")
+        print(f"Images: {len(images)} images provided")
+        print(f"Model: {model}")
+        print(f"Conversation History: {len(conversation_history)} messages")
 
-        if not api_url or not message:
-            print(f"❌ Missing required fields - URL: {bool(api_url)}, Message: {bool(message)}")
-            return jsonify({'error': 'Missing required fields: api_url, message'}), 400
+        if not api_url or (not message and not images):
+            print(f"❌ Missing required fields - URL: {bool(api_url)}, Message: {bool(message)}, Images: {len(images)}")
+            return jsonify({
+                'error': 'Missing required fields: api_url, and either message or images',
+                'details': {
+                    'api_url_provided': bool(api_url),
+                    'message_provided': bool(message),
+                    'images_provided': len(images) > 0,
+                    'received_data': data
+                }
+            }), 400
         
         # Prepare the request to the external API
         headers = {
@@ -52,12 +73,41 @@ def chat_proxy():
         # Add conversation history
         for hist_msg in conversation_history:
             if hist_msg.get('sender') == 'user':
-                messages.append({'role': 'user', 'content': hist_msg.get('content', '')})
+                # Handle user messages - only send text content from history
+                # Images from history are blob URLs that can't be accessed by backend
+                user_content = hist_msg.get('content', '')
+                hist_images = hist_msg.get('images', [])
+                
+                # For conversation history, only send text content
+                # Images from previous messages are stored as blob URLs which are not accessible
+                if hist_images and user_content:
+                    # If there were images, add a note about them in the text
+                    content_with_note = f"{user_content} [Note: This message originally contained {len(hist_images)} image(s)]"
+                    messages.append({'role': 'user', 'content': content_with_note})
+                elif user_content:
+                    # Simple text message
+                    messages.append({'role': 'user', 'content': user_content})
+                elif hist_images:
+                    # Only images, no text - add a placeholder
+                    messages.append({'role': 'user', 'content': f"[Image message with {len(hist_images)} image(s)]"})
             elif hist_msg.get('sender') == 'ai':
                 messages.append({'role': 'assistant', 'content': hist_msg.get('content', '')})
         
         # Add current message
-        messages.append({'role': 'user', 'content': message})
+        if images:
+            # Format as multimodal content
+            content = []
+            if message:
+                content.append({'type': 'text', 'text': message})
+            for img in images:
+                content.append({
+                    'type': 'image_url',
+                    'image_url': {'url': img.get('url', '')}
+                })
+            messages.append({'role': 'user', 'content': content})
+        else:
+            # Simple text message
+            messages.append({'role': 'user', 'content': message})
         
         # API format for this specific endpoint
         payload = {

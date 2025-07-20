@@ -3,6 +3,13 @@ export interface ChatMessage {
   content: string;
   sender: 'user' | 'ai' | 'system';
   timestamp: Date;
+  images?: Array<{
+    id: string;
+    file: File;
+    url: string;
+    name: string;
+    size: number;
+  }>;
 }
 
 export interface Configuration {

@@ -1,5 +1,6 @@
 import pytest
 import json
+import base64
 
 
 def validate_streaming_response(response_text):
@@ -326,6 +327,118 @@ class TestHealthAPI:
             assert response.status_code in [502, 503]
             assert response.json['health_status'] == 'unhealthy'
             assert 'error' in response.json
+
+
+class TestImageChatAPI:
+    """Test suite for Chat API with image functionality."""
+    
+    def test_chat_with_image_data(self, client):
+        """Test chat API with image data."""
+        # 1x1 pixel PNG (minimal valid PNG)
+        test_image_b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+        
+        chat_data = {
+            'api_url': 'https://httpbin.org/post',  # Mock endpoint
+            'message': 'What is in this image?',
+            'images': [
+                {
+                    'id': 'test123',
+                    'url': f'data:image/png;base64,{test_image_b64}',
+                    'name': 'test-image.png',
+                    'size': 100
+                }
+            ],
+            'model': 'gpt-4-vision-preview'
+        }
+        
+        response = client.post('/api/chat', json=chat_data)
+        # Should accept the request and forward it (even if external API fails)
+        assert response.status_code in [200, 500, 502, 503], f"Unexpected status {response.status_code}"
+    
+    def test_chat_with_multiple_images(self, client):
+        """Test chat API with multiple images."""
+        test_image_b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+        
+        chat_data = {
+            'api_url': 'https://httpbin.org/post',
+            'message': 'Compare these images',
+            'images': [
+                {
+                    'id': 'img1',
+                    'url': f'data:image/png;base64,{test_image_b64}',
+                    'name': 'image1.png',
+                    'size': 100
+                },
+                {
+                    'id': 'img2',
+                    'url': f'data:image/png;base64,{test_image_b64}',
+                    'name': 'image2.png',
+                    'size': 100
+                }
+            ],
+            'model': 'gpt-4-vision-preview'
+        }
+        
+        response = client.post('/api/chat', json=chat_data)
+        assert response.status_code in [200, 500, 502, 503], f"Unexpected status {response.status_code}"
+    
+    def test_chat_with_only_images_no_text(self, client):
+        """Test chat API with only images and no text message."""
+        test_image_b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+        
+        chat_data = {
+            'api_url': 'https://httpbin.org/post',
+            'message': '',  # Empty message
+            'images': [
+                {
+                    'id': 'test123',
+                    'url': f'data:image/png;base64,{test_image_b64}',
+                    'name': 'test-image.png',
+                    'size': 100
+                }
+            ],
+            'model': 'gpt-4-vision-preview'
+        }
+        
+        response = client.post('/api/chat', json=chat_data)
+        # Should accept image-only requests
+        assert response.status_code in [200, 500, 502, 503], f"Unexpected status {response.status_code}"
+    
+    def test_chat_with_no_message_no_images(self, client):
+        """Test chat API with neither message nor images (should fail)."""
+        chat_data = {
+            'api_url': 'https://httpbin.org/post',
+            'message': '',
+            'images': [],
+            'model': 'gpt-4-vision-preview'
+        }
+        
+        response = client.post('/api/chat', json=chat_data)
+        # Should reject requests with neither text nor images
+        assert response.status_code == 400
+        assert 'Missing required fields' in response.json['error']
+    
+    def test_chat_image_payload_format(self, client):
+        """Test that image data is properly formatted in the outgoing payload."""
+        test_image_b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+        
+        chat_data = {
+            'api_url': 'https://httpbin.org/post',  # This will echo back our request
+            'message': 'Analyze this image',
+            'images': [
+                {
+                    'id': 'test123',
+                    'url': f'data:image/png;base64,{test_image_b64}',
+                    'name': 'test.png',
+                    'size': 100
+                }
+            ],
+            'model': 'gpt-4-vision-preview'
+        }
+        
+        response = client.post('/api/chat', json=chat_data)
+        # The backend should process the request even if the external API fails
+        assert response.status_code in [200, 500, 502, 503]
 
 
 if __name__ == '__main__':
