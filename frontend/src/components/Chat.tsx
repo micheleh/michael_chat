@@ -1,21 +1,24 @@
-import React, { useState, ChangeEvent, FormEvent, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, ChangeEvent, FormEvent, useRef, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage } from '../types/types';
+import ImageThumbnail from './ImageThumbnail';
 
 interface ChatProps {
   apiUrl: string;
   apiKey: string;
   model?: string;
+  supportsImages?: boolean;
 }
 
 export interface ChatRef {
   focus: () => void;
 }
 
-const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model }, ref) => {
+const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsImages }, ref) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [images, setImages] = useState<Array<{ id: string; file: File; url: string; name: string; size: number }>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -36,36 +39,106 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model }, ref) => 
     }
   }));
 
-  const sendMessage = async (content: string) => {
-    if (!content.trim()) return;
+  const handlePaste = useCallback((event: ClipboardEvent) => {
+    if (!supportsImages) return;
+    
+    const items = event.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+            setImages((prev) => [
+              ...prev,
+              { id, file, url: URL.createObjectURL(file), name: file.name || 'pasted-image.png', size: file.size },
+            ]);
+          }
+        }
+      }
+    }
+  }, [supportsImages]);
+
+  const removeImage = (id: string) => {
+    setImages((prev) => {
+      const imageToRemove = prev.find(img => img.id === id);
+      if (imageToRemove) {
+        URL.revokeObjectURL(imageToRemove.url);
+      }
+      return prev.filter((image) => image.id !== id);
+    });
+  };
+
+  useEffect(() => {
+    if (supportsImages) {
+      document.addEventListener('paste', handlePaste);
+      return () => {
+        document.removeEventListener('paste', handlePaste);
+      };
+    }
+  }, [supportsImages, handlePaste]);
+
+  // Convert File to base64 data URL
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const sendMessage = async (content: string, messageImages?: Array<{ id: string; file: File; url: string; name: string; size: number }>) => {
+    if (!content.trim() && (!messageImages || messageImages.length === 0)) return;
+
+    // Convert image files to base64 data URLs
+    const processedImages = messageImages ? await Promise.all(
+      messageImages.map(async (img) => {
+        const base64Url = await convertFileToBase64(img.file);
+        return {
+          id: img.id,
+          url: base64Url,
+          name: img.name,
+          size: img.size
+        };
+      })
+    ) : [];
 
     // Add user message
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       content,
       sender: 'user',
-      timestamp: new Date()
+      timestamp: new Date(),
+      images: messageImages
     };
     
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setInput('');
+    setImages([]);
     setIsLoading(true);
 
     try {
       // Send to Python backend with conversation history
+      const requestBody = {
+        message: content,
+        images: processedImages,
+        api_url: apiUrl,
+        api_key: apiKey,
+        model: model,
+        conversation_history: messages  // Send previous messages as context
+      };
+      
+      console.log('Sending chat request:', requestBody);
+      
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message: content,
-          api_url: apiUrl,
-          api_key: apiKey,
-          model: model,
-          conversation_history: messages  // Send previous messages as context
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (response.ok) {
@@ -165,13 +238,25 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model }, ref) => 
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (input.trim() && !isLoading) {
-      sendMessage(input);
+    if ((input.trim() || images.length > 0) && !isLoading) {
+      sendMessage(input, images);
+    }
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      if ((input.trim() || images.length > 0) && !isLoading) {
+        sendMessage(input, images);
+      }
     }
   };
 
   const clearChat = () => {
     setMessages([]);
+    // Clear images and revoke object URLs
+    images.forEach(img => URL.revokeObjectURL(img.url));
+    setImages([]);
     // Focus input after clearing chat
     setTimeout(() => {
       inputRef.current?.focus();
@@ -203,6 +288,18 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model }, ref) => 
               ) : (
                 <p>{msg.content}</p>
               )}
+              {msg.images && msg.images.length > 0 && (
+                <div className="message-images">
+                  {msg.images.map((image) => (
+                    <ImageThumbnail
+                      key={image.id}
+                      image={image}
+                      onRemove={() => {}}
+                      showRemoveButton={false}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
             <div className="message-time">
               {msg.timestamp.toLocaleTimeString()}
@@ -223,18 +320,32 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model }, ref) => 
       </div>
       
       <form onSubmit={onSubmit} className="input-form">
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
-          placeholder="Type your message..."
-          disabled={isLoading}
-          className="message-input"
-        />
-        <button type="submit" disabled={isLoading || !input.trim()} className="send-button">
-          {isLoading ? 'Sending...' : 'Send'}
-        </button>
+        {supportsImages && images.length > 0 && (
+          <div className="image-thumbnails">
+            {images.map((image) => (
+              <ImageThumbnail
+                key={image.id}
+                image={image}
+                onRemove={removeImage}
+              />
+            ))}
+          </div>
+        )}
+        <div className="input-row">
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={supportsImages ? "Type your message or paste images..." : "Type your message..."}
+            disabled={isLoading}
+            className="message-input"
+          />
+          <button type="submit" disabled={isLoading || (!input.trim() && images.length === 0)} className="send-button">
+            {isLoading ? 'Sending...' : 'Send'}
+          </button>
+        </div>
       </form>
     </div>
   );

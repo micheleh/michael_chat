@@ -3,6 +3,13 @@ export interface ChatMessage {
   content: string;
   sender: 'user' | 'ai' | 'system';
   timestamp: Date;
+  images?: Array<{
+    id: string;
+    file: File;
+    url: string;
+    name: string;
+    size: number;
+  }>;
 }
 
 export interface Configuration {
@@ -12,6 +19,8 @@ export interface Configuration {
   apiKey: string;
   model: string;
   isActive: boolean;
+  supportsImages?: boolean | null;
+  imageTestAt?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

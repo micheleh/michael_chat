@@ -11,6 +11,7 @@ const App: React.FC = () => {
 
   // Handle configuration changes from the Configuration component
   const handleConfigurationChange = (config: ConfigType | null) => {
+    console.log('Configuration changed:', config);
     setActiveConfiguration(config);
     if (config && currentView === 'config') {
       // Don't auto-switch to chat, let user decide
@@ -76,6 +77,7 @@ const App: React.FC = () => {
             apiUrl={activeConfiguration.apiUrl}
             apiKey={activeConfiguration.apiKey}
             model={activeConfiguration.model}
+            supportsImages={activeConfiguration.supportsImages || false}
           />
         )}
 

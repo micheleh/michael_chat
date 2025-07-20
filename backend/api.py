@@ -3,6 +3,9 @@ API proxy and health check endpoints for Michael's Chat server
 """
 import json
 import requests
+import base64
+import os
+from datetime import datetime
 from flask import Blueprint, request, jsonify, Response
 from config_manager import ConfigurationManager
 
@@ -15,22 +18,43 @@ def chat_proxy():
     try:
         data = request.get_json()
         
+        # Check if data is None
+        if data is None:
+            print(f"❌ No JSON data received in request")
+            return jsonify({
+                'error': 'No JSON data received',
+                'details': 'Request must contain valid JSON data'
+            }), 400
+        
         # Extract configuration from request
         api_url = data.get('api_url')
         api_key = data.get('api_key')
         model = data.get('model')
         message = data.get('message')
+        images = data.get('images', [])
         conversation_history = data.get('conversation_history', [])
         
         # Debug prints
         print(f"\n=== Chat Request Debug ===")
+        print(f"Raw request data: {data}")
         print(f"API URL: {api_url}")
         print(f"API Key: {'*' * (len(api_key) - 8) + api_key[-8:] if api_key and len(api_key) > 8 else 'None'}")
         print(f"Message: {message}")
+        print(f"Images: {len(images)} images provided")
+        print(f"Model: {model}")
+        print(f"Conversation History: {len(conversation_history)} messages")
 
-        if not api_url or not message:
-            print(f"❌ Missing required fields - URL: {bool(api_url)}, Message: {bool(message)}")
-            return jsonify({'error': 'Missing required fields: api_url, message'}), 400
+        if not api_url or (not message and not images):
+            print(f"❌ Missing required fields - URL: {bool(api_url)}, Message: {bool(message)}, Images: {len(images)}")
+            return jsonify({
+                'error': 'Missing required fields: api_url, and either message or images',
+                'details': {
+                    'api_url_provided': bool(api_url),
+                    'message_provided': bool(message),
+                    'images_provided': len(images) > 0,
+                    'received_data': data
+                }
+            }), 400
         
         # Prepare the request to the external API
         headers = {
@@ -49,12 +73,41 @@ def chat_proxy():
         # Add conversation history
         for hist_msg in conversation_history:
             if hist_msg.get('sender') == 'user':
-                messages.append({'role': 'user', 'content': hist_msg.get('content', '')})
+                # Handle user messages - only send text content from history
+                # Images from history are blob URLs that can't be accessed by backend
+                user_content = hist_msg.get('content', '')
+                hist_images = hist_msg.get('images', [])
+                
+                # For conversation history, only send text content
+                # Images from previous messages are stored as blob URLs which are not accessible
+                if hist_images and user_content:
+                    # If there were images, add a note about them in the text
+                    content_with_note = f"{user_content} [Note: This message originally contained {len(hist_images)} image(s)]"
+                    messages.append({'role': 'user', 'content': content_with_note})
+                elif user_content:
+                    # Simple text message
+                    messages.append({'role': 'user', 'content': user_content})
+                elif hist_images:
+                    # Only images, no text - add a placeholder
+                    messages.append({'role': 'user', 'content': f"[Image message with {len(hist_images)} image(s)]"})
             elif hist_msg.get('sender') == 'ai':
                 messages.append({'role': 'assistant', 'content': hist_msg.get('content', '')})
         
         # Add current message
-        messages.append({'role': 'user', 'content': message})
+        if images:
+            # Format as multimodal content
+            content = []
+            if message:
+                content.append({'type': 'text', 'text': message})
+            for img in images:
+                content.append({
+                    'type': 'image_url',
+                    'image_url': {'url': img.get('url', '')}
+                })
+            messages.append({'role': 'user', 'content': content})
+        else:
+            # Simple text message
+            messages.append({'role': 'user', 'content': message})
         
         # API format for this specific endpoint
         payload = {
@@ -167,11 +220,43 @@ def test_external_api():
                 print(f"🔍 Received: '{response_content_clean}'")
                 
                 if response_content_clean.startswith(expected_response):
+                    # Test image support
+                    image_support_result = None
+                    image_support_error = None
+                    try:
+                        image_support_result = test_image_support(api_url, api_key, model)
+                    except Exception as e:
+                        image_support_error = str(e)
+                    
+                    # Find and update the configuration with image support information
+                    try:
+                        # Find configuration by API URL and model
+                        config_to_update = None
+                        for config in config_manager.get_all_configurations():
+                            if (config['apiUrl'] == api_url and 
+                                config.get('model') == model):
+                                config_to_update = config
+                                break
+                        
+                        # Update the configuration with image support info
+                        if config_to_update and image_support_result is not None:
+                            config_manager.update_image_support(config_to_update['id'], image_support_result)
+                            print(f"✅ Updated configuration '{config_to_update['name']}' with image support: {image_support_result}")
+                        elif config_to_update:
+                            print(f"⚠️ Configuration '{config_to_update['name']}' found but image support test result is None")
+                        else:
+                            print(f"⚠️ No configuration found matching API URL: {api_url} and model: {model}")
+                            
+                    except Exception as e:
+                        print(f"🚨 Error updating configuration with image support: {str(e)}")
+                    
                     return jsonify({
                         'health_status': 'healthy',
                         'status_code': response.status_code,
                         'test_response': response_content_clean,
-                        'message': 'API is responding correctly - health check passed'
+                        'message': 'API is responding correctly - health check passed',
+                        'supports_images': image_support_result,
+                        'image_test_error': image_support_error
                     })
                 else:
                     return jsonify({
@@ -214,6 +299,77 @@ def test_external_api():
             'error': str(e),
             'error_type': 'internal_error'
         }), 500
+
+
+def test_image_support(api_url, api_key, model):
+    """Test if a model supports images using the provided example format"""
+    try:
+        # Prepare headers
+        headers = {
+            'Content-Type': 'application/json'
+        }
+        
+        # Add Authorization header if API key is provided
+        if api_key:
+            headers['Authorization'] = f'Bearer {api_key}'
+        
+        # Load and encode the test image
+        image_path = os.path.join(os.path.dirname(__file__), 'chat_favicon_32x32.jpg')
+        try:
+            with open(image_path, 'rb') as image_file:
+                image_data = base64.b64encode(image_file.read()).decode('utf-8')
+                image_url = f'data:image/jpeg;base64,{image_data}'
+                print(f"📸 Using local image: {image_path} (size: {len(image_data)} bytes base64)")
+        except FileNotFoundError:
+            print(f"⚠️ Image file not found at {image_path}, using example URL")
+            image_url = 'https://example.com/image.jpg'
+        
+        # Test payload with image content
+        test_payload = {
+            'messages': [
+                {
+                    'role': 'user', 
+                    'content': [
+                        {'type': 'text', 'text': 'What\'s in this image?'},
+                        {'type': 'image_url', 'image_url': {'url': image_url}}
+                    ]
+                }
+            ],
+            'max_tokens': 5
+        }
+        
+        # Add model if provided
+        if model:
+            test_payload['model'] = model
+        
+        print(f"📸 Testing image support for model: {model or 'default'}")
+        print(f"📤 Sending image test request to: {api_url}")
+        
+        # Make test request
+        response = requests.post(api_url, headers=headers, json=test_payload, timeout=15)
+        
+        print(f"📥 Image test response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            print("✅ Image support test passed - model supports images")
+            return True
+        else:
+            # Check if the error is related to image support
+            error_text = response.text.lower()
+            if 'image' in error_text or 'content' in error_text or 'multimodal' in error_text:
+                print(f"❌ Image support test failed - model does not support images: {response.text[:200]}")
+                return False
+            else:
+                print(f"⚠️ Image support test inconclusive - unexpected error: {response.text[:200]}")
+                # If it's an unexpected error, we re-raise it
+                raise Exception(f"Unexpected error during image support test: {response.text[:200]}")
+                
+    except requests.RequestException as e:
+        print(f"🚨 Network error during image support test: {str(e)}")
+        raise e
+    except Exception as e:
+        print(f"🚨 Error during image support test: {str(e)}")
+        raise e
 
 
 def stream_response(response):
@@ -345,6 +501,17 @@ def create_configuration():
     
     try:
         new_config = config_manager.create_configuration(name, api_url, api_key, model)
+        # Test image support
+        try:
+            supports_images = test_image_support(api_url, api_key, model)
+            config_manager.update_image_support(new_config['id'], supports_images)
+            new_config['supportsImages'] = supports_images
+            new_config['imageTestAt'] = datetime.now().isoformat()
+        except Exception as e:
+            print(f"⚠️ Image support test failed: {str(e)}")
+            new_config['supportsImages'] = None
+            new_config['imageTestAt'] = None
+        
         return jsonify(new_config), 201
     except ValueError as e:
         return jsonify({'error': str(e)}), 409
@@ -360,6 +527,17 @@ def update_configuration(config_id):
     model = data.get('model', '')
     try:
         updated_config = config_manager.update_configuration(config_id, name, api_url, api_key, model)
+        # Test image support
+        try:
+            supports_images = test_image_support(api_url, api_key, model)
+            config_manager.update_image_support(config_id, supports_images)
+            updated_config['supportsImages'] = supports_images
+            updated_config['imageTestAt'] = datetime.now().isoformat()
+        except Exception as e:
+            print(f"⚠️ Image support test failed: {str(e)}")
+            updated_config['supportsImages'] = None
+            updated_config['imageTestAt'] = None
+        
         return jsonify(updated_config)
     except ValueError as e:
         return jsonify({'error': str(e)}), 409
