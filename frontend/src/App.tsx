@@ -87,41 +87,29 @@ const App: React.FC = () => {
         <div className="nav-brand">
           <h1>Michael's Chat</h1>
         </div>
-        <div className="nav-links">
-          <button 
-            className={currentView === 'chat' ? 'nav-button active' : 'nav-button'}
-            onClick={() => setCurrentView('chat')}
-            disabled={!isConfigComplete}
-          >
-            Chat
-          </button>
-          <button 
-            className={currentView === 'config' ? 'nav-button active' : 'nav-button'}
-            onClick={() => setCurrentView('config')}
-          >
-            Configuration
-          </button>
+        <div className="nav-center">
+          {/* Empty center section for future use */}
         </div>
         
-        {/* Chat controls when in chat view */}
-        {currentView === 'chat' && isConfigComplete && (
-          <div className="nav-chat-controls">
-            {configurations.length > 1 && (
-              <div className="nav-config-selector">
-                <ConfigurationDropdown
-                  configurations={configurations}
-                  activeConfiguration={activeConfiguration}
-                  onConfigurationChange={handleChatConfigurationChange}
-                  disabled={false}
-                />
-              </div>
-            )}
-            <button className="nav-clear-button" onClick={() => chatRef.current?.clearChat?.()}>
-              Clear Chat
+        <div className="nav-right">
+          <div className="nav-links">
+            <button 
+              className={currentView === 'chat' ? 'nav-button active' : 'nav-button'}
+              onClick={() => setCurrentView('chat')}
+              disabled={!isConfigComplete}
+            >
+              Chat
+            </button>
+            <button 
+              className={currentView === 'config' ? 'nav-button active' : 'nav-button'}
+              onClick={() => setCurrentView('config')}
+            >
+              Configuration
             </button>
           </div>
-        )}
+        </div>
       </nav>
+      
 
       <main className="main-content">
         {!isConfigComplete && currentView === 'chat' && (
@@ -138,16 +126,51 @@ const App: React.FC = () => {
         )}
 
         {currentView === 'chat' && isConfigComplete && (
-          <Chat 
-            ref={chatRef}
-            apiUrl={activeConfiguration.apiUrl}
-            apiKey={activeConfiguration.apiKey}
-            model={activeConfiguration.model}
-            supportsImages={activeConfiguration.supportsImages || false}
-            configurations={configurations}
-            activeConfiguration={activeConfiguration}
-            onConfigurationChange={handleChatConfigurationChange}
-          />
+          <div className="three-panel-layout">
+            {/* Left Panel - Controls */}
+            <div className="left-panel">
+              <div className="panel-content">
+                {/* Configuration selector */}
+                {configurations.length > 1 && (
+                  <div className="panel-config-selector">
+                    <ConfigurationDropdown
+                      configurations={configurations}
+                      activeConfiguration={activeConfiguration}
+                      onConfigurationChange={handleChatConfigurationChange}
+                      disabled={false}
+                    />
+                  </div>
+                )}
+                
+                {/* Clear chat button */}
+                <button 
+                  className="panel-clear-button" 
+                  onClick={() => chatRef.current?.clearChat?.()}
+                >
+                  🗑️ Clear Chat
+                </button>
+              </div>
+            </div>
+
+            {/* Center Panel - Chat */}
+            <div className="center-panel">
+              <Chat 
+                ref={chatRef}
+                apiUrl={activeConfiguration.apiUrl}
+                apiKey={activeConfiguration.apiKey}
+                model={activeConfiguration.model}
+                supportsImages={activeConfiguration.supportsImages || false}
+                configurations={configurations}
+                activeConfiguration={activeConfiguration}
+                onConfigurationChange={handleChatConfigurationChange}
+              />
+            </div>
+
+            {/* Right Panel - Empty for now */}
+            <div className="right-panel">
+              {/* Empty for future use */}
+            </div>
+          </div>
         )}
 
         {currentView === 'config' && (

@@ -20,7 +20,10 @@ export interface ChatRef {
   clearChat: () => void;
 }
 
-const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsImages, configurations = [], activeConfiguration, onConfigurationChange }, ref) => {
+const Chat = forwardRef((
+  { apiUrl, apiKey, model, supportsImages, configurations = [], activeConfiguration, onConfigurationChange }: ChatProps,
+  ref: React.Ref<ChatRef>
+) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +39,20 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const clearChat = () => {
+    setMessages([]);
+    // Clear images and revoke object URLs
+    images.forEach(img => URL.revokeObjectURL(img.url));
+    setImages([]);
+    // Reset streaming state
+    setCurrentStreamId(null);
+    setIsLoading(false);
+    // Focus input after clearing chat
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  };
 
   // Expose focus and clearChat methods to parent component
   useImperativeHandle(ref, () => ({
@@ -351,19 +368,6 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
     }
   };
 
-  const clearChat = () => {
-    setMessages([]);
-    // Clear images and revoke object URLs
-    images.forEach(img => URL.revokeObjectURL(img.url));
-    setImages([]);
-    // Reset streaming state
-    setCurrentStreamId(null);
-    setIsLoading(false);
-    // Focus input after clearing chat
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 100);
-  };
 
   // Copy to clipboard functionality
   const copyToClipboard = async (text: string) => {
@@ -421,10 +425,8 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
   };
 
   return (
-    <div className="chat-page">
-      <div className="chat-container">
-        
-        <div className="messages-container">
+    <div className="chat-container">
+      <div className="messages-container">
         {messages.length === 0 && (
           <div className="welcome-message">
             <p>Welcome to Michael's Chat! Start a conversation.</p>
@@ -525,7 +527,6 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
           )}
         </div>
         </form>
-      </div>
     </div>
   );
 });
