@@ -130,11 +130,11 @@ const App: React.FC = () => {
           />
         )}
 
-        <div style={{ display: currentView === 'config' ? 'block' : 'none' }}>
+        {currentView === 'config' && (
           <Configuration
             onConfigurationChange={handleConfigurationChange}
           />
-        </div>
+        )}
       </main>
     </div>
   );

@@ -427,7 +427,6 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
             <h3>Chat Session</h3>
             {configurations.length > 1 && (
               <div className="config-selector">
-                <label htmlFor="active-config">Configuration:</label>
                 <ConfigurationDropdown
                   configurations={configurations}
                   activeConfiguration={activeConfiguration}
