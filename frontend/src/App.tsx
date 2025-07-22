@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Chat, { ChatRef } from './components/Chat';
 import Configuration from './components/Configuration';
+import ConfigurationDropdown from './components/ConfigurationDropdown';
 import { Configuration as ConfigType } from './types/types';
 import './App.css';
 
@@ -101,6 +102,25 @@ const App: React.FC = () => {
             Configuration
           </button>
         </div>
+        
+        {/* Chat controls when in chat view */}
+        {currentView === 'chat' && isConfigComplete && (
+          <div className="nav-chat-controls">
+            {configurations.length > 1 && (
+              <div className="nav-config-selector">
+                <ConfigurationDropdown
+                  configurations={configurations}
+                  activeConfiguration={activeConfiguration}
+                  onConfigurationChange={handleChatConfigurationChange}
+                  disabled={false}
+                />
+              </div>
+            )}
+            <button className="nav-clear-button" onClick={() => chatRef.current?.clearChat?.()}>
+              Clear Chat
+            </button>
+          </div>
+        )}
       </nav>
 
       <main className="main-content">

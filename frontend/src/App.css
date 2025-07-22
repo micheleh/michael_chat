@@ -100,6 +100,8 @@ body {
   align-items: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border-bottom: 1px solid #34495e;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .nav-brand {
@@ -163,6 +165,38 @@ body {
 .nav-button:disabled:hover {
   background: transparent;
   transform: none;
+}
+
+/* Navigation Chat Controls */
+.nav-chat-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+.nav-config-selector {
+  display: flex;
+  align-items: center;
+}
+
+.nav-clear-button {
+  background-color: var(--accent-danger);
+  border: 2px solid var(--accent-danger);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.nav-clear-button:hover {
+  background-color: #b71c1c;
+  border-color: #b71c1c;
+  transform: translateY(-1px);
 }
 
 /* Main Content Area */
@@ -599,12 +633,13 @@ body {
 }
 
 
-/* Chat - Redesigned to match configuration form aesthetic */
+/* Chat - Redesigned for maximum vertical space */
 .chat-page {
-  padding: 2rem;
+  padding: 1rem;
   display: flex;
-  justify-content: center;
-  min-height: calc(100vh - 200px);
+  flex-direction: column;
+  height: calc(100vh - 120px); /* Account for navbar height */
+  overflow: hidden;
 }
 
 .chat-container {
@@ -614,10 +649,12 @@ body {
   box-shadow: 0 2px 8px var(--shadow-color);
   display: flex;
   flex-direction: column;
+  flex: 1;
   overflow: hidden;
   transition: all 0.3s ease;
-  width: 1200px;
-  max-width: 95vw;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 1200px;
 }
 
 .chat-container:hover {
@@ -682,17 +719,16 @@ body {
   box-shadow: 0 4px 12px rgba(245, 166, 35, 0.4);
 }
 
-/* Messages container - matching config card body style */
+/* Messages container - dynamic full height */
 .messages-container {
   padding: 1.5rem;
   flex: 1;
   overflow-y: auto;
   background-color: white;
-  min-height: 400px;
-  max-height: 60vh;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  /* Remove artificial height constraints for maximum space utilization */
 }
 
 .welcome-message {

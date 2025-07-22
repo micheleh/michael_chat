@@ -4,7 +4,6 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ChatMessage, Configuration } from '../types/types';
 import ImageThumbnail from './ImageThumbnail';
-import ConfigurationDropdown from './ConfigurationDropdown';
 
 interface ChatProps {
   apiUrl: string;
@@ -18,6 +17,7 @@ interface ChatProps {
 
 export interface ChatRef {
   focus: () => void;
+  clearChat: () => void;
 }
 
 const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsImages, configurations = [], activeConfiguration, onConfigurationChange }, ref) => {
@@ -37,13 +37,14 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
     scrollToBottom();
   }, [messages]);
 
-  // Expose focus method to parent component
+  // Expose focus and clearChat methods to parent component
   useImperativeHandle(ref, () => ({
     focus: () => {
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
-    }
+    },
+    clearChat: clearChat
   }));
 
   const handlePaste = useCallback((event: ClipboardEvent) => {
@@ -422,26 +423,6 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
   return (
     <div className="chat-page">
       <div className="chat-container">
-        <div className="chat-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <h3>Chat Session</h3>
-            {configurations.length > 1 && (
-              <div className="config-selector">
-                <ConfigurationDropdown
-                  configurations={configurations}
-                  activeConfiguration={activeConfiguration}
-                  onConfigurationChange={onConfigurationChange || (() => {})}
-                  disabled={isLoading}
-                />
-              </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button onClick={clearChat} className="clear-button">
-              Clear Chat
-            </button>
-          </div>
-        </div>
         
         <div className="messages-container">
         {messages.length === 0 && (
