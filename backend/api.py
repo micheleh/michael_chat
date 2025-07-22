@@ -353,16 +353,11 @@ def test_image_support(api_url, api_key, model):
         if api_key:
             headers['Authorization'] = f'Bearer {api_key}'
         
-        # Load and encode the test image
-        image_path = os.path.join(os.path.dirname(__file__), 'chat_favicon_32x32.jpg')
-        try:
-            with open(image_path, 'rb') as image_file:
-                image_data = base64.b64encode(image_file.read()).decode('utf-8')
-                image_url = f'data:image/jpeg;base64,{image_data}'
-                print(f"📸 Using local image: {image_path} (size: {len(image_data)} bytes base64)")
-        except FileNotFoundError:
-            print(f"⚠️ Image file not found at {image_path}, using example URL")
-            image_url = 'https://example.com/image.jpg'
+        # Use a minimal 1x1 pixel PNG image for faster testing
+        # This is a base64 encoded 1x1 transparent PNG (67 bytes)
+        minimal_image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        image_url = f'data:image/png;base64,{minimal_image}'
+        print(f"📸 Using minimal test image (1x1 PNG, {len(minimal_image)} bytes base64)")
         
         # Test payload with image content
         test_payload = {
@@ -370,12 +365,12 @@ def test_image_support(api_url, api_key, model):
                 {
                     'role': 'user', 
                     'content': [
-                        {'type': 'text', 'text': 'What\'s in this image?'},
+                        {'type': 'text', 'text': 'Test'},
                         {'type': 'image_url', 'image_url': {'url': image_url}}
                     ]
                 }
             ],
-            'max_tokens': 5
+            'max_tokens': 3
         }
         
         # Add model if provided
@@ -385,8 +380,8 @@ def test_image_support(api_url, api_key, model):
         print(f"📸 Testing image support for model: {model or 'default'}")
         print(f"📤 Sending image test request to: {api_url}")
         
-        # Make test request
-        response = requests.post(api_url, headers=headers, json=test_payload, timeout=15)
+        # Make test request with longer timeout
+        response = requests.post(api_url, headers=headers, json=test_payload, timeout=30)
         
         print(f"📥 Image test response status: {response.status_code}")
         

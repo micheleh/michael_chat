@@ -1061,6 +1061,70 @@ body {
   border-radius: 12px;
 }
 
+/* Delete Confirmation Modal */
+.delete-confirmation-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.warning-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: rgba(208, 2, 27, 0.1);
+  border: 2px solid rgba(208, 2, 27, 0.2);
+}
+
+.delete-confirmation-content p {
+  margin: 0;
+  color: var(--text-dark);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.delete-confirmation-content .warning-text {
+  color: var(--accent-danger);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.config-details {
+  background-color: var(--secondary-color);
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  text-align: left;
+  width: 100%;
+  max-width: 400px;
+}
+
+.config-details p {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--text-light);
+  word-break: break-word;
+}
+
+.config-details p:first-child {
+  margin-top: 0;
+}
+
+.config-details p:last-child {
+  margin-bottom: 0;
+}
+
+.config-details strong {
+  color: var(--text-dark);
+  font-weight: 600;
+}
+
 @media (max-width: 992px) {
   .configuration-page {
     flex-direction: column;

@@ -25,6 +25,8 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
   const [testResult, setTestResult] = useState<any>(null);
   const [showTestResult, setShowTestResult] = useState(false);
   const [testingConfigId, setTestingConfigId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [configToDelete, setConfigToDelete] = useState<Configuration | null>(null);
 
   const onConfigurationChangeRef = useRef(onConfigurationChange);
 
@@ -118,18 +120,24 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
     setShowForm(true);
   };
 
-  const handleDelete = async (configId: string) => {
-    if (!window.confirm('Are you sure you want to delete this configuration?')) {
-      return;
-    }
+  const handleDeleteClick = (config: Configuration) => {
+    setConfigToDelete(config);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!configToDelete) return;
+    
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`/api/configurations/${configId}`, {
+      const response = await fetch(`/api/configurations/${configToDelete.id}`, {
         method: 'DELETE'
       });
       if (response.ok) {
         await loadConfigurations();
+        setShowDeleteConfirm(false);
+        setConfigToDelete(null);
       } else {
         const data = await response.json();
         throw new Error(data.error || 'Failed to delete configuration');
@@ -139,6 +147,11 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false);
+    setConfigToDelete(null);
   };
 
   const handleActivate = async (configId: string) => {
@@ -308,7 +321,7 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
                   <button onClick={() => handleEdit(config)} className="btn btn-secondary" disabled={loading}>
                     <FaEdit /> Edit
                   </button>
-                  <button onClick={() => handleDelete(config.id)} className="btn btn-danger" disabled={loading || configurations.length === 1}>
+                  <button onClick={() => handleDeleteClick(config)} className="btn btn-danger" disabled={loading || configurations.length === 1}>
                     <FaTrash /> Delete
                   </button>
                 </div>
@@ -416,6 +429,33 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
             <div className="form-actions">
               <button onClick={() => setShowTestResult(false)} className="btn btn-secondary">
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && configToDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Delete Configuration</h3>
+            <div className="delete-confirmation-content">
+              <div className="warning-icon">
+                <FaTrash size={48} color="#D0021B" />
+              </div>
+              <p>Are you sure you want to delete the configuration <strong>"{configToDelete.name}"</strong>?</p>
+              <p className="warning-text">This action cannot be undone.</p>
+              <div className="config-details">
+                <p><strong>URL:</strong> {configToDelete.apiUrl}</p>
+                {configToDelete.model && <p><strong>Model:</strong> {configToDelete.model}</p>}
+              </div>
+            </div>
+            <div className="form-actions">
+              <button onClick={handleDeleteCancel} className="btn btn-secondary" disabled={loading}>
+                Cancel
+              </button>
+              <button onClick={handleDeleteConfirm} className="btn btn-danger" disabled={loading}>
+                <FaTrash /> {loading ? 'Deleting...' : 'Delete Configuration'}
               </button>
             </div>
           </div>
