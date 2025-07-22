@@ -1,3 +1,52 @@
+/* Code Block Styles */
+.code-block-container {
+  background-color: var(--secondary-color);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px var(--shadow-color);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.code-block-language {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+.code-block-copy {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--primary-color);
+  background-color: transparent;
+  border: none;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.code-block-copy:hover {
+  background-color: rgba(74, 144, 226, 0.1);
+}
+
+.copied-feedback {
+  font-size: 0.75rem;
+  color: var(--accent-success);
+  margin-left: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.copied-feedback.visible {
+  opacity: 1;
+}
+
 /* Global Styles & Variables */
 :root {
   --primary-color: #4A90E2;
@@ -970,6 +1019,24 @@ body {
     padding: 0.75rem;
     border-radius: 8px;
     border: 1px solid var(--border-color);
+}
+
+.api-key-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.api-key-container input {
+  flex: 1;
+}
+
+.toggle-visibility {
+  padding: 0.75rem 1rem !important;
+  min-width: 80px;
+  font-size: 0.85rem !important;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .form-actions {

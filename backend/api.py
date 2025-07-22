@@ -70,7 +70,7 @@ def chat_proxy():
         
         # Build messages array with conversation history
         messages = [
-            {'role': 'system', 'content': 'You are a helpful assistant. Provide clear, accurate, and well-structured responses.'}
+                {'role': 'system', 'content': 'You are a helpful and knowledgeable assistant. All your responses must be formatted using Markdown. When providing code, you MUST follow this EXACT format:\n\n```language\ncode here\n```\n\nFor example:\n\n```python\nfor i in range(10):\n    print("Hello")\n```\n\nCRITICAL RULES:\n1. Always start with ``` followed immediately by the language name\n2. Add a newline after the language name\n3. Write your code with proper indentation\n4. Add a newline before the closing ```\n5. End with ``` on its own line\n\nNever write ```python on the same line as code. Never omit the language name. This formatting is essential for proper code display.'}
         ]
         
         # Add conversation history

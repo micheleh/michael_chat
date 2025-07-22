@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
 import { Configuration, ConfigurationInput } from '../types/types';
-import { FaPlus, FaCheckCircle, FaTimesCircle, FaQuestionCircle, FaInfoCircle, FaTrash, FaEdit, FaPlay, FaPowerOff } from 'react-icons/fa';
+import { FaPlus, FaCheckCircle, FaTimesCircle, FaQuestionCircle, FaInfoCircle, FaTrash, FaEdit, FaPlay, FaPowerOff, FaSave, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 interface ConfigurationProps {
   onConfigurationChange: (config: Configuration | null) => void;
@@ -383,9 +383,9 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
                   <button
                     type="button"
                     onClick={() => setShowApiKey(!showApiKey)}
-                    className="toggle-visibility"
+                    className="btn btn-secondary toggle-visibility"
                   >
-                    {showApiKey ? 'Hide' : 'Show'}
+                    {showApiKey ? <><FaEyeSlash /> Hide</> : <><FaEye /> Show</>}
                   </button>
                 </div>
               </div>
@@ -394,7 +394,7 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={loading}>
-                  {loading ? 'Saving...' : (isEditing ? 'Update' : 'Save')}
+                  <FaSave /> {loading ? 'Saving...' : (isEditing ? 'Update' : 'Save')}
                 </button>
               </div>
             </form>

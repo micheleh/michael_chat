@@ -1,5 +1,7 @@
 import React, { useState, ChangeEvent, FormEvent, useRef, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ChatMessage, Configuration } from '../types/types';
 import ImageThumbnail from './ImageThumbnail';
 import ConfigurationDropdown from './ConfigurationDropdown';
@@ -227,11 +229,16 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
                   
                   // Parse SSE data lines
                   if (line.startsWith('data: ')) {
-                    const content = line.substring(6); // Remove 'data: ' prefix
+                    let content = line.substring(6); // Remove 'data: ' prefix
                     
-                    // Skip empty content or control data
-                    if (!content.trim() || content.includes('stream_id')) {
+                    // Skip only control data, not empty content (which may contain newlines)
+                    if (content.includes('stream_id')) {
                       continue;
+                    }
+                    
+                    // Handle newlines explicitly - convert empty strings to actual newlines
+                    if(content === "") {
+                      content = "\n";
                     }
                     
                     // Update the AI message with new content
@@ -357,6 +364,61 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
     }, 100);
   };
 
+  // Copy to clipboard functionality
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // You can add a toast notification here if desired
+      console.log('Code copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy code: ', err);
+    }
+  };
+
+  // Custom code block component
+  const CodeBlock = ({ language, children }: { language: string; children: string }) => {
+    const [copied, setCopied] = useState(false);
+    
+    const handleCopy = async () => {
+      await copyToClipboard(children);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+      <div className="code-block-container">
+        <div className="code-block-header">
+          <span className="code-language">{language}</span>
+          <button 
+            onClick={handleCopy}
+            className="copy-button"
+            title={copied ? "Copied!" : "Copy code"}
+          >
+            {copied ? (
+              <span className="copy-feedback">✓ Copied!</span>
+            ) : (
+              <span className="copy-icon">📋</span>
+            )}
+          </button>
+        </div>
+        <SyntaxHighlighter
+          language={language}
+          style={oneDark}
+          customStyle={{
+            margin: 0,
+            borderRadius: '0 0 8px 8px',
+            fontSize: '14px',
+            lineHeight: '1.5'
+          }}
+          showLineNumbers={true}
+          wrapLines={true}
+        >
+          {children}
+        </SyntaxHighlighter>
+      </div>
+    );
+  };
+
   return (
     <div className="chat-page">
       <div className="chat-container">
@@ -394,7 +456,29 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
             <div className="message-content">
               <strong>{msg.sender === 'user' ? 'You' : msg.sender === 'ai' ? 'AI' : 'System'}:</strong>
               {msg.sender === 'ai' ? (
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                <ReactMarkdown
+                  components={{
+                    code(props) {
+                      const {children, className, node, ...rest} = props;
+                      const match = /language-(\w+)/.exec(className || '');
+                      const language = match ? match[1] : 'text';
+                      
+                      // For inline code (no className), render normally
+                      if (!className) {
+                        return <code {...rest}>{children}</code>;
+                      }
+                      
+                      // For code blocks, use our custom component
+                      return (
+                        <CodeBlock language={language}>
+                          {String(children).replace(/\n$/, '')}
+                        </CodeBlock>
+                      );
+                    }
+                  }}
+                >
+                  {msg.content}
+                </ReactMarkdown>
               ) : (
                 <p>{msg.content}</p>
               )}

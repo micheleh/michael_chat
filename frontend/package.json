@@ -6,11 +6,13 @@
     "@types/node": "^16.18.59",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-icons": "^4.12.0",
     "react-markdown": "^10.1.0",
     "react-scripts": "5.0.1",
+    "react-syntax-highlighter": "^15.6.1",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
   },
