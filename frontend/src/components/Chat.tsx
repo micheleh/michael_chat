@@ -389,7 +389,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
     return (
       <div className="code-block-container">
         <div className="code-block-header">
-          <span className="code-language">{language}</span>
+          <span className="code-block-language">{language}</span>
           <button 
             onClick={handleCopy}
             className="copy-button"
