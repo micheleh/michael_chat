@@ -457,22 +457,20 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ apiUrl, apiKey, model, supportsIm
               {msg.sender === 'ai' ? (
                 <ReactMarkdown
                   components={{
-                    code(props) {
-                      const {children, className, node, ...rest} = props;
-                      const match = /language-(\w+)/.exec(className || '');
-                      const language = match ? match[1] : 'text';
-                      
-                      // For inline code (no className), render normally
-                      if (!className) {
+                    code(props: any) {
+                      const { node, inline, className, children, ...rest } = props;
+                      const match = /language-(\w+)/.exec(className || "");
+                      const language = match ? match[1] : "text";
+
+                      if (inline) {
                         return <code {...rest}>{children}</code>;
+                      } else {
+                        return (
+                          <CodeBlock language={language}>
+                            {String(children).replace(/\n$/, "")}
+                          </CodeBlock>
+                        );
                       }
-                      
-                      // For code blocks, use our custom component
-                      return (
-                        <CodeBlock language={language}>
-                          {String(children).replace(/\n$/, '')}
-                        </CodeBlock>
-                      );
                     }
                   }}
                 >

@@ -20,7 +20,8 @@
   color: var(--text-light);
 }
 
-.code-block-copy {
+.code-block-copy,
+.copy-button {
   cursor: pointer;
   font-size: 0.85rem;
   color: var(--primary-color);
@@ -31,11 +32,13 @@
   transition: background-color 0.2s ease;
 }
 
-.code-block-copy:hover {
+.code-block-copy:hover,
+.copy-button:hover {
   background-color: rgba(74, 144, 226, 0.1);
 }
 
-.copied-feedback {
+.copied-feedback,
+.copy-feedback {
   font-size: 0.75rem;
   color: var(--accent-success);
   margin-left: 0.5rem;
@@ -43,8 +46,13 @@
   transition: opacity 0.3s ease-in-out;
 }
 
-.copied-feedback.visible {
+.copied-feedback.visible,
+.copy-feedback.visible {
   opacity: 1;
+}
+
+.copy-icon {
+  font-size: 0.85rem;
 }
 
 /* Global Styles & Variables */
