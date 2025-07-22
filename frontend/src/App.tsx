@@ -85,11 +85,6 @@ const App: React.FC = () => {
       <nav className="navbar">
         <div className="nav-brand">
           <h1>Michael's Chat</h1>
-          {activeConfiguration && (
-            <span className="active-config-indicator">
-              Active: {activeConfiguration.name}
-            </span>
-          )}
         </div>
         <div className="nav-links">
           <button 

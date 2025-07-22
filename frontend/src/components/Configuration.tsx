@@ -8,7 +8,6 @@ interface ConfigurationProps {
 
 const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationChange }) => {
   const [configurations, setConfigurations] = useState<Configuration[]>([]);
-  const [activeConfig, setActiveConfig] = useState<Configuration | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingConfig, setEditingConfig] = useState<Configuration | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -43,7 +42,6 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
       if (response.ok) {
         setConfigurations(data);
         const active = data.find((config: Configuration) => config.isActive);
-        setActiveConfig(active);
         if (active) {
           onConfigurationChangeRef.current(active);
         }
@@ -95,7 +93,6 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
         setEditingConfig(null);
 
         if (!isEditing && configurations.length === 0) {
-          setActiveConfig(data);
           onConfigurationChangeRef.current(data);
         }
       } else {
@@ -163,7 +160,6 @@ const ConfigurationComponent: React.FC<ConfigurationProps> = ({ onConfigurationC
       });
       const data = await response.json();
       if (response.ok) {
-        setActiveConfig(data);
         onConfigurationChangeRef.current(data);
         await loadConfigurations();
       } else {
